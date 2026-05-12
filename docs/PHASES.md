@@ -1,6 +1,6 @@
 # Detailed Phase Breakdown
 
-## DamyDream — Technical Specifications Per Phase
+## EchoEcho-T — Technical Specifications Per Phase
 
 ---
 
@@ -247,7 +247,7 @@ Port working pipeline to Android. Primary interaction: Bluetooth earbuds.
 src/phase2_mobile/
 ├── android/
 │   ├── app/
-│   │   └── src/main/kotlin/com/damydream/
+│   │   └── src/main/kotlin/com/echoecho-t/
 │   │       ├── audio/
 │   │       │   ├── AudioCaptureService.kt
 │   │       │   ├── AudioPlaybackManager.kt

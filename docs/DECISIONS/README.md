@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-## DamyDream — Decision Log
+## EchoEcho-T — Decision Log
 
 ---
 

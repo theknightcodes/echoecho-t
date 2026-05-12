@@ -1,6 +1,6 @@
 # Cost Analysis & Budget
 
-## DamyDream — AI Communication Companion
+## EchoEcho-T — AI Communication Companion
 
 ---
 

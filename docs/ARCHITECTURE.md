@@ -1,6 +1,6 @@
 # System Architecture
 
-## DamyDream — AI Communication Operating System
+## EchoEcho-T — AI Communication Operating System
 
 ---
 

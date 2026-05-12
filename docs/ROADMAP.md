@@ -1,6 +1,6 @@
 # Execution Roadmap
 
-## DamyDream — Clear Path from Idea to Product
+## EchoEcho-T — Clear Path from Idea to Product
 
 ---
 

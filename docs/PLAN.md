@@ -1,6 +1,6 @@
 # Master Project Plan
 
-## Project DamyDream — AI Communication Companion
+## Project EchoEcho-T — AI Communication Companion
 
 ---
 

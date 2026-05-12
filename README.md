@@ -1,4 +1,4 @@
-# Project DamyDream
+# Project EchoEcho-T
 ## AI Communication Companion / Wearable Conversational Proxy
 
 ---
@@ -60,7 +60,7 @@ The system should evolve from:
 ## Repository Structure
 
 ```
-damydream/
+echoecho-t/
 ├── docs/                     # Project documentation
 │   ├── PLAN.md               # Master project plan
 │   ├── ARCHITECTURE.md       # System architecture
