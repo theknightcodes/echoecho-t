@@ -247,7 +247,7 @@ Port working pipeline to Android. Primary interaction: Bluetooth earbuds.
 src/phase2_mobile/
 ├── android/
 │   ├── app/
-│   │   └── src/main/kotlin/com/echoecho-t/
+│   │   └── src/main/kotlin/com/echoecho/
 │   │       ├── audio/
 │   │       │   ├── AudioCaptureService.kt
 │   │       │   ├── AudioPlaybackManager.kt
