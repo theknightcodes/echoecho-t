@@ -49,3 +49,4 @@ config/credentials.json
 .env.local
 tasks/lessons.md
 docs/DECISIONS/*.draft.md
+echoenv/
