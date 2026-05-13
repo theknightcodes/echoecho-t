@@ -30,7 +30,7 @@ class LatencyBenchmark:
             print(f"[Status] {status}", file=sys.stderr)
 
         # Generate a short test impulse every 2 seconds on output
-        current_time = time_info.current_time
+        current_time = time_info.currentTime
         outdata[:] = 0
 
         if int(current_time) % 2 == 0 and current_time % 1 < 0.05:

@@ -29,6 +29,7 @@ def get_silero_vad():
         model="silero_vad",
         force_reload=False,
         onnx=False,
+        trust_repo=True,
     )
     print("Model loaded successfully.")
     return model, utils
@@ -51,44 +52,51 @@ def vad_stream(model, threshold=0.5, min_speech_duration_ms=250):
     is_speaking = False
     speech_start_time = None
     speech_buffer = []
+    ring_buffer = np.zeros(0, dtype=np.float32)  # Accumulates samples for VAD
 
-    def callback(indata, outdata, frames, time_info, status):
-        nonlocal is_speaking, speech_start_time, speech_buffer
+    def callback(indata, frames, time_info, status):
+        nonlocal is_speaking, speech_start_time, speech_buffer, ring_buffer
 
         if status:
             print(f"[Status] {status}", file=sys.stderr)
 
-        # Convert to tensor (Silero expects float32, shape: [batch, samples])
-        audio_tensor = torch.from_numpy(indata[:, 0].astype(np.float32))
-        audio_tensor = audio_tensor.unsqueeze(0)  # Add batch dimension
+        # Append new samples to ring buffer
+        # RawInputStream gives a CFFI 1D buffer, convert to numpy
+        ring_buffer = np.concatenate((ring_buffer, np.frombuffer(indata, dtype=np.float32).copy()))
 
-        # Run VAD
-        with torch.no_grad():
-            speech_prob = model(audio_tensor, SAMPLE_RATE).item()
+        # Silero VAD requires exactly 512 samples at 16kHz
+        while len(ring_buffer) >= 512:
+            chunk = ring_buffer[:512]
+            ring_buffer = ring_buffer[512:]
 
-        # Detect speech start/stop with hysteresis
-        if not is_speaking and speech_prob >= threshold:
-            is_speaking = True
-            speech_start_time = time.time()
-            speech_buffer = [audio_tensor]
-            print("[SPEECH START]", end="\r")
+            audio_tensor = torch.from_numpy(chunk).unsqueeze(0)
 
-        elif is_speaking and speech_prob < threshold - 0.15:
-            # Check minimum duration
-            duration_ms = (time.time() - speech_start_time) * 1000
-            if duration_ms >= min_speech_duration_ms:
-                print(f"[SPEECH END] Duration: {duration_ms:.0f} ms | Prob: {speech_prob:.3f}")
-                speech_buffer = []
-            is_speaking = False
-            speech_start_time = None
+            # Run VAD
+            with torch.no_grad():
+                speech_prob = model(audio_tensor, SAMPLE_RATE).item()
 
-        elif is_speaking:
-            speech_buffer.append(audio_tensor)
-            duration_ms = (time.time() - speech_start_time) * 1000
-            print(f"[SPEAKING] {duration_ms:.0f} ms | Prob: {speech_prob:.3f}  ", end="\r")
+            # Detect speech start/stop with hysteresis
+            if not is_speaking and speech_prob >= threshold:
+                is_speaking = True
+                speech_start_time = time.time()
+                speech_buffer = [audio_tensor]
+                print("[SPEECH START]", end="\r")
 
-        else:
-            print(f"[SILENCE] Prob: {speech_prob:.3f}  ", end="\r")
+            elif is_speaking and speech_prob < threshold - 0.15:
+                duration_ms = (time.time() - speech_start_time) * 1000
+                if duration_ms >= min_speech_duration_ms:
+                    print(f"[SPEECH END] Duration: {duration_ms:.0f} ms | Prob: {speech_prob:.3f}")
+                    speech_buffer = []
+                is_speaking = False
+                speech_start_time = None
+
+            elif is_speaking:
+                speech_buffer.append(audio_tensor)
+                duration_ms = (time.time() - speech_start_time) * 1000
+                print(f"[SPEAKING] {duration_ms:.0f} ms | Prob: {speech_prob:.3f}  ", end="\r")
+
+            else:
+                print(f"[SILENCE] Prob: {speech_prob:.3f}  ", end="\r")
 
     try:
         with sd.RawInputStream(

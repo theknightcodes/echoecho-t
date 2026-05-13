@@ -30,13 +30,14 @@ def audio_callback(indata, outdata, frames, time_info, status):
 
     # Log timing info for analysis
     # time_info contains:
-    #   input_adc_time: time when first sample was captured
-    #   output_dac_time: time when first sample will play
-    #   current_time: current stream time
-    adc_time = time_info.input_adc_time
-    dac_time = time_info.output_dac_time
+    #   inputBufferAdcTime: time when first sample was captured
+    #   outputBufferDacTime: time when first sample will play
+    #   currentTime: current stream time
+    # On some backends (macOS CoreAudio) these are 0.0.
+    adc_time = time_info.inputBufferAdcTime
+    dac_time = time_info.outputBufferDacTime
 
-    if adc_time is not None and dac_time is not None:
+    if adc_time and dac_time:
         latency = dac_time - adc_time
         print(f"  Latency: {latency*1000:.2f} ms | ADC: {adc_time:.4f} | DAC: {dac_time:.4f}", end="\r")
 

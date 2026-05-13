@@ -23,8 +23,10 @@ def test_buffer_size(block_size):
 
     def callback(indata, outdata, frames, time_info, status):
         outdata[:] = indata
-        if time_info.input_adc_time and time_info.output_dac_time:
-            latencies.append(time_info.output_dac_time - time_info.input_adc_time)
+        adc = time_info.inputBufferAdcTime
+        dac = time_info.outputBufferDacTime
+        if adc and dac:
+            latencies.append(dac - adc)
 
     try:
         with sd.Stream(
