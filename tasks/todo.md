@@ -65,18 +65,17 @@
 - STT: Whisper tiny inference 0.15s for 5s audio (from Phase 0 benchmark)
 - Pipeline: Threaded orchestrator with queue-based stage communication
 
+**Multi-language switching:**
+- 14 languages supported (de, fr, es, it, pt, nl, ru, zh, ja, ko, hi, ar, tr, pl)
+- Voice commands: "switch to X", "change to X", "speak X", "use X"
+- Confirmation responses in target language
+- Lazy model loading (downloads on first use)
+
 **Pending real-speech test:**
 Run `python src/phase1_desktop/main.py` and speak into microphone.
-Expected: Speak English → hear German translation spoken aloud.
+Expected: Speak English → hear translation spoken aloud.
+Say "switch to French" to change language.
 Target latency: <3s end-to-end.
-
-### Phase 2 — Mobile MVP
-- [ ] Set up Flutter + Kotlin project
-- [ ] Android audio capture service
-- [ ] Model conversion to mobile formats
-- [ ] Bluetooth audio routing
-- [ ] Offline mode verification
-- [ ] Real-world testing
 
 ### Phase 2 — Mobile MVP
 - [ ] Set up Flutter + Kotlin project
