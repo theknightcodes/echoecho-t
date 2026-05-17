@@ -1,0 +1,47 @@
+# EchoEcho-T Phase 1 — Desktop Prototype Configuration
+
+audio:
+  sample_rate: 16000
+  block_size: 512        # ~32ms at 16kHz
+  channels: 1            # Mono
+  dtype: float32
+
+vad:
+  model: silero_vad
+  threshold: 0.5
+  min_speech_duration_ms: 250
+  speech_pad_ms: 300
+  ring_buffer_samples: 512
+
+stt:
+  model: tiny
+  device: cpu
+  compute_type: int8
+  beam_size: 5
+  language: null         # Auto-detect
+  vad_filter: true
+  vad_parameters:
+    threshold: 0.5
+    min_speech_duration_ms: 250
+    max_speech_duration_s: 30
+
+translation:
+  model: Helsinki-NLP/opus-mt-en-de
+  source_lang: en
+  target_lang: de
+  max_length: 100
+
+tts:
+  # Phase 1: Use system TTS via pyttsx3
+  # Phase 2+: Switch to Piper TTS
+  engine: pyttsx3
+  rate: 150              # Words per minute
+  volume: 0.9
+
+pipeline:
+  queue_size: 3
+  stage_timeout: 30      # Seconds per stage
+
+logging:
+  latency_log: logs/latency.csv
+  level: INFO
