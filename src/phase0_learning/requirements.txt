@@ -10,8 +10,12 @@ torch>=2.0.0
 torchaudio>=2.0.0
 packaging>=23.0  # Silero VAD dependency
 
+# Phase 0 — Week 2 additions
+faster-whisper>=1.1.0
+transformers>=4.40.0
+sentencepiece>=0.2.0
+onnxruntime>=1.17.0
+onnx>=1.16.0
+
 # Phase 1 will add:
-# faster-whisper
-# transformers
 # piper-tts
-# onnxruntime
