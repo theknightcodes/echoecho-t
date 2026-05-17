@@ -14,16 +14,19 @@ class Translator:
         source_lang: str = "en",
         target_lang: str = "de",
     ):
-        from transformers import pipeline
+        from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
         self.source_lang = source_lang
         self.target_lang = target_lang
         self.model_name = model_name
-        self.pipeline = pipeline("text2text-generation", model=model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 
     def translate(self, text: str) -> str:
         """Translate text."""
         if not text.strip():
             return ""
-        result = self.pipeline(text, max_length=100)
-        return result[0]["generated_text"]
+        inputs = self.tokenizer(text, return_tensors="pt", padding=True)
+        outputs = self.model.generate(**inputs)
+        result = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        return result
