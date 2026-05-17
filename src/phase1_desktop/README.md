@@ -3,7 +3,7 @@
 ## Pipeline Architecture
 
 ```
-Mic → AudioCapture → VAD → STT → Translation → TTS → Speaker
+Mic → AudioCapture → VAD → STT → [Switch Check] → Translation → TTS → Speaker
 ```
 
 ## Modules
@@ -15,16 +15,56 @@ Mic → AudioCapture → VAD → STT → Translation → TTS → Speaker
 | VAD | `ai/vad.py` | Silero VAD speech detection |
 | STT | `ai/stt.py` | Whisper tiny transcription |
 | Translation | `ai/translate.py` | Helsinki-NLP translation |
+| Language Manager | `ai/language_manager.py` | Multi-language switching |
 | TTS | `ai/tts.py` | Text-to-speech (pyttsx3) |
 | Orchestrator | `pipeline/orchestrator.py` | Threaded pipeline controller |
+| Orchestrator v2 | `pipeline/orchestrator_v2.py` | Pipeline + language switching |
 | Latency | `utils/latency.py` | Per-stage timing + CSV logging |
 
 ## Usage
 
 ```bash
 cd src/phase1_desktop
-python main.py [duration_seconds]
+
+# Default: English → German, 30 seconds
+python main.py
+
+# Custom duration + language
+python main.py 60 fr     # 60s, start with French
+python main.py 60 ja     # 60s, start with Japanese
+python main.py 60 hi     # 60s, start with Hindi
 ```
+
+### Voice Commands (During Runtime)
+
+Say any of these to switch languages:
+- "switch to French"
+- "change to Spanish"
+- "speak Japanese"
+- "use Hindi"
+- "German"
+
+The system responds with a confirmation in the target language.
+
+### Supported Languages
+
+| Code | Language | Model Status |
+|---|---|---|
+| de | German | Verified |
+| fr | French | Verified |
+| es | Spanish | Verified |
+| it | Italian | Verified |
+| pt | Portuguese | Verified |
+| nl | Dutch | Verified |
+| ru | Russian | Verified |
+| zh | Chinese | Verified |
+| ja | Japanese | Verified |
+| ko | Korean | Verified |
+| hi | Hindi | Verified |
+| ar | Arabic | Verified |
+| tr | Turkish | Verified |
+| pl | Polish | Verified |
+| ta | Tamil | Requires NLLB-200 (Phase 2) |
 
 ## Testing
 
