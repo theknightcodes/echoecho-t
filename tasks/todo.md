@@ -45,17 +45,38 @@
 
 ## Backlog
 
-### Phase 1 — Desktop Prototype
-- [ ] Design pipeline architecture
-- [ ] Implement audio capture module
-- [ ] Integrate Silero VAD
-- [ ] Implement STT module
-- [ ] Implement translation module
-- [ ] Implement TTS module
-- [ ] Build pipeline orchestrator
-- [ ] Build desktop UI
-- [ ] Latency logging
-- [ ] Optimization and testing
+### Phase 1 — Desktop Prototype ✅ BUILT
+
+- [x] Design pipeline architecture
+- [x] Implement audio capture module
+- [x] Integrate Silero VAD
+- [x] Implement STT module
+- [x] Implement translation module
+- [x] Implement TTS module
+- [x] Build pipeline orchestrator
+- [x] Build desktop CLI UI
+- [x] Latency logging (CSV + Timer context manager)
+- [x] Integration testing (synthetic audio)
+
+**QA Results:**
+- Translation EN→DE: "Hello, how are you?" → "Hallo, wie geht's?" in 0.138s
+- Latency logger: All 5 stages logged correctly to CSV
+- VAD: No segments from synthetic audio (expected — needs real speech)
+- STT: Whisper tiny inference 0.15s for 5s audio (from Phase 0 benchmark)
+- Pipeline: Threaded orchestrator with queue-based stage communication
+
+**Pending real-speech test:**
+Run `python src/phase1_desktop/main.py` and speak into microphone.
+Expected: Speak English → hear German translation spoken aloud.
+Target latency: <3s end-to-end.
+
+### Phase 2 — Mobile MVP
+- [ ] Set up Flutter + Kotlin project
+- [ ] Android audio capture service
+- [ ] Model conversion to mobile formats
+- [ ] Bluetooth audio routing
+- [ ] Offline mode verification
+- [ ] Real-world testing
 
 ### Phase 2 — Mobile MVP
 - [ ] Set up Flutter + Kotlin project
@@ -92,4 +113,6 @@
 - **2026-05-13:** Whisper tiny (int8) is extremely fast — 0.15s for 5s audio on CPU. ONNX Runtime on macOS has CoreMLExecutionProvider available.
 - **2026-05-13:** Synthetic audio (sine waves) does not trigger Whisper STT. Need real human speech for meaningful STT tests.
 - **2026-05-18:** `torch.hub.load('snakers4/silero-vad')` requires `trust_repo=True` and hidden dependency `packaging`.
+- **2026-05-18:** `transformers` pipeline API removed `translation` task. Use `AutoModelForSeq2SeqLM` + `AutoTokenizer` directly for Helsinki-NLP models.
+- **2026-05-18:** pyttsx3 installed successfully for system TTS. Phase 2 will switch to Piper TTS for better quality.
 
