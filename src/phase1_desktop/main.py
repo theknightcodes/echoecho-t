@@ -1,12 +1,24 @@
 #!/usr/bin/env python3
 """
-EchoEcho-T Phase 1 — Desktop Prototype
+EchoEcho-T Phase 1 — Desktop Prototype v2
 
-Real-time speech translation pipeline:
-  Mic → VAD → STT → Translation → TTS (speaks translation)
+Real-time speech translation with multi-language support.
+
+Pipeline: Mic → VAD → STT → [Switch Check] → Translation → TTS
 
 Usage:
-    python main.py [duration_seconds]
+    python main.py [duration_seconds] [default_language]
+
+Examples:
+    python main.py                  # 30s, default German
+    python main.py 60               # 60s, default German
+    python main.py 60 ta            # 60s, default Tamil
+
+Voice Commands:
+    "switch to Tamil"     → Switch to Tamil
+    "change to Japanese"  → Switch to Japanese
+    "speak French"      → Switch to French
+    "use Hindi"         → Switch to Hindi
 
 Press Ctrl+C to stop.
 """
@@ -15,38 +27,52 @@ import sys
 import time
 import os
 
-# Add src to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from pipeline.orchestrator import Pipeline
+from pipeline.orchestrator_v2 import Pipeline
+from ai.language_manager import LANGUAGE_NAMES
 
 
 def main():
     duration = int(sys.argv[1]) if len(sys.argv) > 1 else 30
+    default_lang = sys.argv[2] if len(sys.argv) > 2 else "de"
 
     print("=" * 60)
-    print("EchoEcho-T — Desktop Prototype (Phase 1)")
+    print("EchoEcho-T — Desktop Prototype (Phase 1 v2)")
     print("=" * 60)
     print("Pipeline: Mic → VAD → STT → Translation → TTS")
     print(f"Duration: {duration} seconds")
+    print(f"Default:  English → {LANGUAGE_NAMES.get(default_lang, default_lang)}")
     print("-" * 60)
-    print("Speak in English. You'll hear the German translation.")
+    print("Speak in English. You'll hear the translation.")
+    print("Say 'switch to [language]' to change target language.")
+    print("Supported languages:")
+    langs = ", ".join([f"{k}={v}" for k, v in LANGUAGE_NAMES.items()])
+    for line in _wrap_text(langs, 58):
+        print(f"  {line}")
+    print("-" * 60)
     print("Press Ctrl+C to stop.")
-    print("-" * 60)
+    print("=" * 60)
 
     def on_transcript(text, lang):
         print(f"  [STT] {lang.upper()}: {text}")
 
     def on_translation(text):
-        print(f"  [DE]  {text}")
+        print(f"  [→]   {text}")
 
     def on_status(msg):
         print(f"  [STATUS] {msg}")
 
-    pipeline = Pipeline()
+    def on_language_switch(lang_code, confirmation):
+        lang_name = LANGUAGE_NAMES.get(lang_code, lang_code)
+        print(f"  [SWITCH] → {lang_name}")
+        print(f"  [CONFIRM] {confirmation}")
+
+    pipeline = Pipeline(default_lang=default_lang)
     pipeline.on_transcript = on_transcript
     pipeline.on_translation = on_translation
     pipeline.on_status = on_status
+    pipeline.on_language_switch = on_language_switch
 
     try:
         with pipeline:
@@ -56,12 +82,27 @@ def main():
     except Exception as e:
         print(f"\n[Error] {e}")
         import traceback
-
         traceback.print_exc()
 
     print("\n" + "=" * 60)
     print("Pipeline stopped.")
     print("=" * 60)
+
+
+def _wrap_text(text: str, width: int) -> list:
+    """Wrap text to specified width."""
+    words = text.split(", ")
+    lines = []
+    current = ""
+    for word in words:
+        if len(current) + len(word) + 2 > width:
+            lines.append(current)
+            current = word
+        else:
+            current = f"{current}, {word}" if current else word
+    if current:
+        lines.append(current)
+    return lines
 
 
 if __name__ == "__main__":
