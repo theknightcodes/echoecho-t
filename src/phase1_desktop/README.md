@@ -54,16 +54,16 @@ The system responds with a confirmation in the target language.
 | fr | French | Verified |
 | es | Spanish | Verified |
 | it | Italian | Verified |
-| pt | Portuguese | Verified |
+| pt | Portuguese | Verified (tc-big) |
 | nl | Dutch | Verified |
 | ru | Russian | Verified |
 | zh | Chinese | Verified |
-| ja | Japanese | Verified |
-| ko | Korean | Verified |
 | hi | Hindi | Verified |
 | ar | Arabic | Verified |
-| tr | Turkish | Verified |
-| pl | Polish | Verified |
+| tr | Turkish | Verified (tc-big) |
+| ja | Japanese | Requires NLLB-200 (Phase 2) |
+| ko | Korean | Requires NLLB-200 (Phase 2) |
+| pl | Polish | Requires NLLB-200 (Phase 2) |
 | ta | Tamil | Requires NLLB-200 (Phase 2) |
 
 ## Testing

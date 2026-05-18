@@ -66,10 +66,19 @@
 - Pipeline: Threaded orchestrator with queue-based stage communication
 
 **Multi-language switching:**
-- 14 languages supported (de, fr, es, it, pt, nl, ru, zh, ja, ko, hi, ar, tr, pl)
+- 11 languages verified (de, fr, es, it, pt, nl, ru, zh, hi, ar, tr)
+- 4 languages require NLLB-200 for Phase 2 (ja, ko, pl, ta)
 - Voice commands: "switch to X", "change to X", "speak X", "use X"
 - Confirmation responses in target language
 - Lazy model loading (downloads on first use)
+
+**QA Results (2026-05-18):**
+- All 11 languages PASS with valid translations
+- Best performers: Turkish 0.061s, Chinese 0.067s, Hindi 0.068s avg
+- Portuguese + Turkish use tc-big models (verified working)
+- Japanese (opus-mt-en-jap) loads but produces gibberish
+- Korean (opus-mt-tc-big-en-ko) loads but produces toxic/gibberish output
+- Polish: no English-to-Polish model exists in Helsinki-NLP
 
 **Pending real-speech test:**
 Run `python src/phase1_desktop/main.py` and speak into microphone.

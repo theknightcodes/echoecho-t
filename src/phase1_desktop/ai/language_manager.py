@@ -15,17 +15,17 @@ LANGUAGE_MODELS = {
     "fr": "Helsinki-NLP/opus-mt-en-fr",
     "es": "Helsinki-NLP/opus-mt-en-es",
     "it": "Helsinki-NLP/opus-mt-en-it",
-    "pt": "Helsinki-NLP/opus-mt-en-pt",
+    "pt": "Helsinki-NLP/opus-mt-tc-big-en-pt",  # tc-big model available
     "nl": "Helsinki-NLP/opus-mt-en-nl",
     "ru": "Helsinki-NLP/opus-mt-en-ru",
     "zh": "Helsinki-NLP/opus-mt-en-zh",
-    "ja": "Helsinki-NLP/opus-mt-en-jap",
-    "ko": "Helsinki-NLP/opus-mt-en-ko",
+    # "ja": "Helsinki-NLP/opus-mt-en-jap",  # LOADS but produces gibberish — use NLLB-200 in Phase 2
+    # "ko": "Helsinki-NLP/opus-mt-tc-big-en-ko",  # LOADS but produces toxic/gibberish output — use NLLB-200 in Phase 2
     # "ta": "Helsinki-NLP/opus-mt-en-ta",  # Not available — use NLLB-200 for Tamil
     "hi": "Helsinki-NLP/opus-mt-en-hi",
     "ar": "Helsinki-NLP/opus-mt-en-ar",
-    "tr": "Helsinki-NLP/opus-mt-en-tr",
-    "pl": "Helsinki-NLP/opus-mt-en-pl",
+    "tr": "Helsinki-NLP/opus-mt-tc-big-en-tr",  # tc-big model available
+    # "pl": "Helsinki-NLP/opus-mt-en-pl",  # No English-to-Polish model exists in Helsinki-NLP
 }
 
 LANGUAGE_NAMES = {
@@ -37,13 +37,13 @@ LANGUAGE_NAMES = {
     "nl": "Dutch",
     "ru": "Russian",
     "zh": "Chinese",
-    "ja": "Japanese",
-    "ko": "Korean",
+    # "ja": "Japanese",  # No quality model available in Helsinki-NLP
+    # "ko": "Korean",    # No quality model available in Helsinki-NLP
     # "ta": "Tamil",  # Not available in Helsinki-NLP, use NLLB-200
     "hi": "Hindi",
     "ar": "Arabic",
     "tr": "Turkish",
-    "pl": "Polish",
+    # "pl": "Polish",  # No English-to-Polish model exists in Helsinki-NLP
 }
 
 # Greeting confirmations per language
@@ -56,13 +56,13 @@ LANGUAGE_GREETINGS = {
     "nl": "Taal gewijzigd naar Nederlands.",
     "ru": "Язык изменен на русский.",
     "zh": "语言已切换为中文。",
-    "ja": "言語を日本語に変更しました。",
-    "ko": "언어가 한국어로 변경되었습니다.",
+    # "ja": "言語を日本語に変更しました。",  # No quality model available in Helsinki-NLP
+    # "ko": "언어가 한국어로 변경되었습니다。",  # No quality model available in Helsinki-NLP
     # "ta": "மொழி தமிழுக்கு மாற்றப்பட்டது.",  # Not available
     "hi": "भाषा हिंदी में बदल दी गई है।",
     "ar": "تم تغيير اللغة إلى العربية.",
     "tr": "Dil Türkçe olarak değiştirildi.",
-    "pl": "Język zmieniony na polski.",
+    # "pl": "Język zmieniony na polski.",  # No model available
 }
 
 
@@ -150,10 +150,10 @@ class LanguageManager:
         switch_patterns = [
             "switch to ", "change to ", "switch language to ",
             "speak ", "use ", "translate to ", "set language to ",
-            "language ", "lang ", "tamil", "hindi", "japanese",
-            "chinese", "german", "french", "spanish", "korean",
+            "language ", "lang ", "tamil", "hindi",  # "japanese", "korean" — no models available
+            "chinese", "german", "french", "spanish",  # "korean" — no model available
             "arabic", "russian", "italian", "portuguese", "dutch",
-            "turkish", "polish",
+            "turkish",  # "polish", "japanese", "korean" — no models available
         ]
 
         for pattern in switch_patterns:
