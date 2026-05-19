@@ -1,5 +1,6 @@
 import numpy as np
-import io
+import threading
+import queue
 from typing import Optional
 
 """
@@ -16,6 +17,10 @@ class TTS:
         self.volume = volume
         self.engine = None
         self._init_engine()
+        self._queue = queue.Queue()
+        self._thread = None
+        self._running = False
+        self._start_worker()
 
     def _init_engine(self):
         try:
@@ -28,21 +33,48 @@ class TTS:
             print("[TTS] pyttsx3 not installed. TTS will be text-only.")
             print("Install with: pip install pyttsx3")
 
-    def speak(self, text: str):
-        """Speak text aloud."""
-        if not text.strip():
-            return
+    def _start_worker(self):
+        """Start background TTS thread."""
+        self._running = True
+        self._thread = threading.Thread(target=self._worker, name="TTS-Worker", daemon=True)
+        self._thread.start()
+
+    def _worker(self):
+        """Background thread that speaks queued text."""
+        while self._running:
+            try:
+                text = self._queue.get(timeout=0.5)
+            except queue.Empty:
+                continue
+            if text is None:
+                break
+            self._speak_sync(text)
+
+    def _speak_sync(self, text: str):
+        """Synchronous speak (called from worker thread)."""
         if self.engine:
             self.engine.say(text)
             self.engine.runAndWait()
         else:
             print(f"[TTS] {text}")
 
+    def speak(self, text: str):
+        """Queue text to be spoken (non-blocking)."""
+        if not text.strip():
+            return
+        self._queue.put_nowait(text)
+
+    def stop(self):
+        """Stop the TTS worker."""
+        self._running = False
+        self._queue.put(None)
+        if self._thread:
+            self._thread.join(timeout=2.0)
+
     def synthesize(self, text: str) -> Optional[np.ndarray]:
         """
         Synthesize text to audio array.
         Returns None in Phase 1 (pyttsx3 doesn't expose audio buffer easily).
         """
-        # Phase 1: Just speak. Phase 2 will implement real synthesis with Piper.
         self.speak(text)
         return None

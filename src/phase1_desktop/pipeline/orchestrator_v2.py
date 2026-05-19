@@ -43,7 +43,7 @@ class Pipeline:
 
         # Modules
         self.capture = AudioCapture(sample_rate, block_size)
-        self.vad = VAD(threshold=0.5, min_speech_duration_ms=250)
+        self.vad = VAD(threshold=0.3, min_speech_duration_ms=250)
         self.stt = STT(model_size="tiny", device="cpu", compute_type="int8")
         self.lang_manager = LanguageManager(default_lang=default_lang)
         self.tts = TTS()
@@ -73,9 +73,12 @@ class Pipeline:
                 segment = self.vad.process(chunk)
 
             if segment is not None:
+                duration_ms = len(segment) / self.sample_rate * 1000
+                print(f"  [VAD]  Speech detected: {duration_ms:.0f}ms")
                 try:
                     self._stt_queue.put_nowait(segment)
                 except queue.Full:
+                    print("  [VAD]  STT queue full — dropping segment")
                     pass
 
     def _stt_worker(self):
@@ -86,18 +89,22 @@ class Pipeline:
             except queue.Empty:
                 continue
 
+            print(f"  [STT]  Transcribing {len(segment)} samples...")
             with Timer(self.logger, "stt", "whisper transcription"):
                 text, lang = self.stt.transcribe(segment)
 
             if not text.strip():
+                print("  [STT]  No text detected")
                 continue
 
+            print(f"  [STT]  Detected ({lang}): '{text}'")
             if self.on_transcript:
                 self.on_transcript(text, lang)
 
             try:
                 self._trans_queue.put_nowait(text)
             except queue.Full:
+                print("  [TRANS] Queue full — dropping text")
                 pass
 
     def _process_worker(self):
@@ -111,21 +118,27 @@ class Pipeline:
             # Check if this is a language switch command
             switch_lang = self.lang_manager.is_switch_command(text)
             if switch_lang:
+                print(f"  [PROC] Switch command detected: '{text}' → {switch_lang}")
                 confirmation = self.lang_manager.switch_language(switch_lang)
                 if self.on_language_switch:
                     self.on_language_switch(switch_lang, confirmation)
                 # Speak confirmation in new language
+                print(f"  [TTS]  Speaking confirmation...")
                 self.tts.speak(confirmation)
                 continue
 
             # Normal translation
+            print(f"  [PROC] Translating to {self.lang_manager.current_lang}...")
             with Timer(self.logger, "translate", f"to {self.lang_manager.current_lang}"):
                 translated = self.lang_manager.translate(text)
 
             if translated.strip():
+                print(f"  [→]    {translated}")
                 if self.on_translation:
                     self.on_translation(translated)
                 self.tts.speak(translated)
+            else:
+                print("  [PROC] Translation empty — skipping TTS")
 
     def start(self):
         """Start all pipeline stages."""
@@ -151,6 +164,7 @@ class Pipeline:
         """Stop all pipeline stages."""
         self._running = False
         self.capture.stop()
+        self.tts.stop()
         for t in self._threads:
             t.join(timeout=2.0)
         self._threads = []

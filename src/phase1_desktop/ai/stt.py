@@ -14,13 +14,13 @@ class STT:
         model_size: str = "tiny",
         device: str = "cpu",
         compute_type: str = "int8",
-        language: Optional[str] = None,
+        language: Optional[str] = "en",
         beam_size: int = 5,
     ):
         from faster_whisper import WhisperModel
 
         self.model = WhisperModel(model_size, device=device, compute_type=compute_type)
-        self.language = language
+        self.language = language  # Force English for source speech
         self.beam_size = beam_size
 
     def transcribe(self, audio: np.ndarray) -> tuple[str, str]:

@@ -82,3 +82,12 @@ class VAD:
         self.speech_start = None
         self.speech_buffer = []
         self.ring_buffer = np.zeros(0, dtype=np.float32)
+
+    def flush(self) -> Optional[np.ndarray]:
+        """Return any buffered speech (call when stopping pipeline)."""
+        if self.is_speaking and self.speech_buffer:
+            segment = np.concatenate(self.speech_buffer)
+            self.speech_buffer = []
+            self.is_speaking = False
+            return segment
+        return None
