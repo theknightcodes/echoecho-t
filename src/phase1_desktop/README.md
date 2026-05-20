@@ -14,7 +14,7 @@ Mic → AudioCapture → VAD → STT → [Switch Check] → Translation → TTS 
 | Audio Playback | `audio/playback.py` | Play audio from queue |
 | VAD | `ai/vad.py` | Silero VAD speech detection |
 | STT | `ai/stt.py` | Whisper tiny transcription |
-| Translation | `ai/translate.py` | Helsinki-NLP translation |
+| Translation | `ai/translate.py` | NLLB-200-distilled-600M (single model) |
 | Language Manager | `ai/language_manager.py` | Multi-language switching |
 | TTS | `ai/tts.py` | Text-to-speech (pyttsx3) |
 | Orchestrator | `pipeline/orchestrator.py` | Threaded pipeline controller |
@@ -48,23 +48,23 @@ The system responds with a confirmation in the target language.
 
 ### Supported Languages
 
-| Code | Language | Model Status |
+| Code | Language | QA Status |
 |---|---|---|
-| de | German | Verified |
-| fr | French | Verified |
-| es | Spanish | Verified |
-| it | Italian | Verified |
-| pt | Portuguese | Verified (tc-big) |
-| nl | Dutch | Verified |
-| ru | Russian | Verified |
-| zh | Chinese | Verified |
-| hi | Hindi | Verified |
-| ar | Arabic | Verified |
-| tr | Turkish | Verified (tc-big) |
-| ja | Japanese | Requires NLLB-200 (Phase 2) |
-| ko | Korean | Requires NLLB-200 (Phase 2) |
-| pl | Polish | Requires NLLB-200 (Phase 2) |
-| ta | Tamil | Requires NLLB-200 (Phase 2) |
+| de | German | PASS |
+| fr | French | PASS |
+| es | Spanish | PASS |
+| it | Italian | PASS |
+| pt | Portuguese | PASS |
+| nl | Dutch | PASS |
+| ru | Russian | PASS |
+| zh | Chinese | PASS |
+| ja | Japanese | PASS |
+| ko | Korean | PASS |
+| ta | Tamil | PASS |
+| hi | Hindi | PASS |
+| ar | Arabic | PASS |
+| tr | Turkish | PASS |
+| pl | Polish | PASS |
 
 ## Testing
 
@@ -97,6 +97,6 @@ python -c "from utils.latency import LatencyLogger; LatencyLogger().report()"
 ## Notes
 
 - TTS uses pyttsx3 (system voices) in Phase 1. Piper TTS in Phase 2.
-- Translation model downloads on first run (~300MB).
+- Translation uses NLLB-200-distilled-600M (~2.4GB fp16) — single model for 15 languages.
 - Whisper tiny downloads on first run (~39MB).
 - All processing is local — no cloud calls.

@@ -1,0 +1,18 @@
+# EchoEcho-T Phase 1 — Desktop Prototype Dependencies
+
+# Audio
+gnumpy
+sounddevice>=0.5.0
+
+# AI / ML
+torch>=2.0.0
+transformers>=4.35.0
+accelerate>=0.25.0
+faster-whisper>=0.10.0
+sentencepiece
+
+# TTS
+pyttsx3
+
+# Utilities
+numpy

@@ -1,7 +1,7 @@
 """
-Comprehensive Language QA — Phase 1
+Comprehensive Language QA — Phase 1 (NLLB-200 Backend)
 
-Tests translation quality for ALL supported languages.
+Tests translation quality for ALL supported languages using NLLB-200-distilled-600M.
 Uses text input (not speech) to isolate translation quality.
 
 Reports: model load success, translation output, quality assessment.
@@ -12,7 +12,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import time
-from ai.language_manager import LanguageManager, LANGUAGE_MODELS, LANGUAGE_NAMES
+from ai.language_manager import LanguageManager, LANGUAGE_NAMES
 
 # Standard test phrases for consistent comparison
 TEST_PHRASES = [
@@ -26,45 +26,28 @@ TEST_PHRASES = [
 ]
 
 
-def test_single_language(lang_code: str, test_phrases: list) -> dict:
+def test_single_language(lang_code: str, test_phrases: list, lm: LanguageManager) -> dict:
     """Test one language thoroughly."""
     lang_name = LANGUAGE_NAMES.get(lang_code, lang_code)
     print(f"\n{'='*60}")
     print(f"Testing: {lang_name} ({lang_code})")
     print(f"{'='*60}")
 
-    lm = LanguageManager(default_lang=lang_code)
     results = {
         "code": lang_code,
         "name": lang_name,
-        "model": LANGUAGE_MODELS.get(lang_code, "N/A"),
-        "load_success": False,
-        "load_time": 0,
+        "load_success": True,
         "translations": [],
         "avg_time": 0,
         "errors": [],
     }
-
-    # Test model loading
-    t0 = time.time()
-    try:
-        confirmation = lm.switch_language(lang_code)
-        results["load_time"] = time.time() - t0
-        results["load_success"] = True
-        print(f"  Model loaded in {results['load_time']:.2f}s")
-        print(f"  Confirmation: {confirmation}")
-    except Exception as e:
-        results["load_time"] = time.time() - t0
-        results["errors"].append(f"LOAD FAILED: {e}")
-        print(f"  LOAD FAILED: {e}")
-        return results
 
     # Test translations
     times = []
     for phrase in test_phrases:
         try:
             t0 = time.time()
-            translated = lm.translate(phrase)
+            translated = lm.translate(phrase, target_lang=lang_code)
             elapsed = time.time() - t0
             times.append(elapsed)
 
@@ -75,7 +58,7 @@ def test_single_language(lang_code: str, test_phrases: list) -> dict:
                 "status": "OK",
             }
             results["translations"].append(result)
-            print(f"  [{elapsed:.3f}s] '{phrase}' → '{translated}'")
+            print(f"  [{elapsed:.3f}s] '{phrase}' -> '{translated}'")
         except Exception as e:
             result = {
                 "source": phrase,
@@ -85,7 +68,7 @@ def test_single_language(lang_code: str, test_phrases: list) -> dict:
             }
             results["translations"].append(result)
             results["errors"].append(f"TRANSLATE FAILED for '{phrase}': {e}")
-            print(f"  ERROR: '{phrase}' → {e}")
+            print(f"  ERROR: '{phrase}' -> {e}")
 
     if times:
         results["avg_time"] = sum(times) / len(times)
@@ -96,13 +79,9 @@ def test_single_language(lang_code: str, test_phrases: list) -> dict:
 
 def quality_assessment(result: dict) -> str:
     """Basic quality check on translation output."""
-    if not result["load_success"]:
-        return "FAIL — Model did not load"
-
     if not result["translations"]:
         return "FAIL — No translations produced"
 
-    # Check if translations are empty or same as source
     empty_count = 0
     same_count = 0
     for t in result["translations"]:
@@ -120,7 +99,6 @@ def quality_assessment(result: dict) -> str:
     if same_count > len(result["translations"]) // 2:
         return "FAIL — Most translations identical to source (pass-through)"
 
-    # Check if translation looks different enough
     sample = result["translations"][0]["translated"]
     source = result["translations"][0]["source"]
     if sample.lower().strip() == source.lower().strip():
@@ -131,17 +109,28 @@ def quality_assessment(result: dict) -> str:
 
 def main():
     print("=" * 80)
-    print("COMPREHENSIVE LANGUAGE QA")
+    print("COMPREHENSIVE LANGUAGE QA — NLLB-200-distilled-600M")
     print("=" * 80)
-    print(f"Testing {len(LANGUAGE_MODELS)} languages with {len(TEST_PHRASES)} phrases each")
-    print("This will take several minutes (models download on first use)")
+    print(f"Testing {len(LANGUAGE_NAMES)} languages with {len(TEST_PHRASES)} phrases each")
+    print("Model: facebook/nllb-200-distilled-600M (~2.4GB fp16)")
+    print("First run downloads model (~2.4GB) — this will take a few minutes")
     print("-" * 80)
+
+    lm = LanguageManager()
+    # Pre-load model once
+    print("\n[Loading model...]")
+    try:
+        lm._load_model()
+        print("[Model ready]\n")
+    except Exception as e:
+        print(f"[FATAL] Could not load model: {e}")
+        return
 
     all_results = []
     total_start = time.time()
 
-    for lang_code in sorted(LANGUAGE_MODELS.keys()):
-        result = test_single_language(lang_code, TEST_PHRASES)
+    for lang_code in sorted(LANGUAGE_NAMES.keys()):
+        result = test_single_language(lang_code, TEST_PHRASES, lm)
         result["quality"] = quality_assessment(result)
         all_results.append(result)
 
@@ -151,7 +140,7 @@ def main():
     print("\n" + "=" * 80)
     print("QA SUMMARY REPORT")
     print("=" * 80)
-    print(f"{'Language':<12} {'Code':<6} {'Load':<8} {'Avg Time':<12} {'Quality':<30}")
+    print(f"{'Language':<12} {'Code':<6} {'Avg Time':<12} {'Quality':<30}")
     print("-" * 80)
 
     pass_count = 0
@@ -163,10 +152,8 @@ def main():
         else:
             fail_count += 1
 
-        load_str = f"{r['load_time']:.1f}s" if r["load_success"] else "FAIL"
         time_str = f"{r['avg_time']:.3f}s" if r["avg_time"] > 0 else "N/A"
-
-        print(f"{r['name']:<12} {r['code']:<6} {load_str:<8} {time_str:<12} {status:<30}")
+        print(f"{r['name']:<12} {r['code']:<6} {time_str:<12} {status:<30}")
 
     print("-" * 80)
     print(f"Total time: {total_time:.1f}s")
@@ -184,7 +171,7 @@ def main():
                 print(f"  - {err}")
             for t in r["translations"]:
                 if t["status"] != "OK":
-                    print(f"  - '{t['source']}' → {t['translated']}")
+                    print(f"  - '{t['source']}' -> {t['translated']}")
 
     # Best performers
     successes = [r for r in all_results if r["quality"].startswith("PASS")]
