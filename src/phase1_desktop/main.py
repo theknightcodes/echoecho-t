@@ -31,6 +31,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from pipeline.orchestrator_v2 import Pipeline
 from ai.language_manager import LANGUAGE_NAMES
+from ai.tts import _sanitize_for_tts
 
 
 def main():
@@ -58,7 +59,11 @@ def main():
         print(f"  [STT] {lang.upper()}: {text}")
 
     def on_translation(text):
-        print(f"  [→]   {text}")
+        clean = _sanitize_for_tts(text)
+        if clean != text:
+            print(f"  [→]   {clean}  (raw: {text})")
+        else:
+            print(f"  [→]   {clean}")
 
     def on_status(msg):
         print(f"  [STATUS] {msg}")

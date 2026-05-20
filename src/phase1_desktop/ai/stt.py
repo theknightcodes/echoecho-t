@@ -32,7 +32,7 @@ class STT:
             audio,
             beam_size=self.beam_size,
             language=self.language,
-            condition_on_previous_text=True,
+            condition_on_previous_text=False,
         )
         text = " ".join([s.text.strip() for s in segments])
         return text, info.language

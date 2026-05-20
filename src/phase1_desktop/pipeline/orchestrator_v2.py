@@ -43,7 +43,7 @@ class Pipeline:
 
         # Modules
         self.capture = AudioCapture(sample_rate, block_size)
-        self.vad = VAD(threshold=0.3, min_speech_duration_ms=250)
+        self.vad = VAD(threshold=0.3, min_speech_duration_ms=500)
         self.stt = STT(model_size="tiny", device="cpu", compute_type="int8")
         self.lang_manager = LanguageManager(default_lang=default_lang)
         self.tts = TTS()
@@ -117,6 +117,15 @@ class Pipeline:
             except queue.Empty:
                 continue
 
+            # Skip very short transcripts — Whisper tiny hallucinates on 1-2 word utterances
+            if len(text.strip()) < 3:
+                continue
+
+            # Skip obvious TTS feedback: Tamil text getting re-transcribed as English
+            if text.lower().strip() in ("bye", "hi", "dot", "don\'t") and len(text.strip()) <= 4:
+                print(f"  [SKIP] Short/hallucinated transcript: '{text}'")
+                continue
+
             # Check if this is a language switch command
             switch_lang = self.lang_manager.is_switch_command(text)
             if switch_lang:
@@ -124,7 +133,7 @@ class Pipeline:
                 if self.on_language_switch:
                     self.on_language_switch(switch_lang, confirmation)
                 self.tts.speak(confirmation)
-                self._tts_cooldown_until = time.time() + 1.5
+                self._clear_feedback()
                 continue
 
             # Normal translation
@@ -135,7 +144,18 @@ class Pipeline:
                 if self.on_translation:
                     self.on_translation(translated)
                 self.tts.speak(translated)
-                self._tts_cooldown_until = time.time() + 1.5
+                self._clear_feedback()
+
+    def _clear_feedback(self):
+        """Reset VAD and clear queues after TTS to prevent feedback loop."""
+        self._tts_cooldown_until = time.time() + 3.0
+        self.vad.reset()
+        # Drain STT queue
+        while not self._stt_queue.empty():
+            try:
+                self._stt_queue.get_nowait()
+            except queue.Empty:
+                break
 
     def start(self):
         """Start all pipeline stages."""
