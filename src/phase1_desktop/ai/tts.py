@@ -1,6 +1,7 @@
 import numpy as np
 import threading
 import queue
+import re
 from typing import Optional
 
 """
@@ -9,6 +10,15 @@ Text-to-Speech Wrapper — Phase 1
 Phase 1 uses pyttsx3 (system TTS) for simplicity.
 Phase 2+ will switch to Piper TTS for better quality.
 """
+
+
+def _sanitize_for_tts(text: str) -> str:
+    """Strip punctuation that pyttsx3 reads aloud as words (dot, question mark, dash)."""
+    # Remove leading dash + space (some models prefix "- ")
+    text = re.sub(r"^-\s+", "", text)
+    # Remove trailing sentence punctuation (period, question mark, exclamation)
+    text = re.sub(r"[.?!]+$", "", text).strip()
+    return text
 
 
 class TTS:
@@ -52,11 +62,14 @@ class TTS:
 
     def _speak_sync(self, text: str):
         """Synchronous speak (called from worker thread)."""
+        clean = _sanitize_for_tts(text)
+        if not clean:
+            return
         if self.engine:
-            self.engine.say(text)
+            self.engine.say(clean)
             self.engine.runAndWait()
         else:
-            print(f"[TTS] {text}")
+            print(f"[TTS] {clean}")
 
     def speak(self, text: str):
         """Queue text to be spoken (non-blocking)."""
