@@ -2,6 +2,7 @@ import numpy as np
 import threading
 import queue
 import re
+import unicodedata
 from typing import Optional
 
 """
@@ -13,11 +14,13 @@ Phase 2+ will switch to Piper TTS for better quality.
 
 
 def _sanitize_for_tts(text: str) -> str:
-    """Strip punctuation that pyttsx3 reads aloud as words (dot, question mark, dash)."""
+    """Strip all punctuation that pyttsx3 reads aloud as words."""
     # Remove leading dash + space (some models prefix "- ")
     text = re.sub(r"^-\s+", "", text)
-    # Remove trailing sentence punctuation (period, question mark, exclamation)
-    text = re.sub(r"[.?!]+$", "", text).strip()
+    # Remove ALL punctuation characters (Unicode categories starting with 'P')
+    text = ''.join(ch for ch in text if not unicodedata.category(ch).startswith('P'))
+    # Collapse multiple spaces into one
+    text = re.sub(r'\s+', ' ', text).strip()
     return text
 
 

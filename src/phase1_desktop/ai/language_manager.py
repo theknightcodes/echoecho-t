@@ -125,6 +125,7 @@ class LanguageManager:
                 **inputs,
                 forced_bos_token_id=forced_bos,
                 max_new_tokens=128,
+                max_length=None,
             )
 
         result = self._tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
