@@ -184,16 +184,18 @@ class LanguageManager:
         ]
 
         for pattern in switch_patterns:
-            if text_lower.startswith(pattern) or text_lower == pattern.strip():
-                if " " in pattern:
-                    lang_part = text_lower[len(pattern):].strip()
-                else:
-                    lang_part = pattern.strip()
+            has_space = " " in pattern
+            if has_space and text_lower.startswith(pattern):
+                lang_part = text_lower[len(pattern):].strip()
+            elif not has_space and text_lower == pattern.strip():
+                lang_part = pattern.strip()
+            else:
+                continue
 
-                name_to_code = {v.lower(): k for k, v in LANGUAGE_NAMES.items()}
-                if lang_part in name_to_code:
-                    return name_to_code[lang_part]
-                if lang_part in LANGUAGE_CODES:
-                    return lang_part
+            name_to_code = {v.lower(): k for k, v in LANGUAGE_NAMES.items()}
+            if lang_part in name_to_code:
+                return name_to_code[lang_part]
+            if lang_part in LANGUAGE_CODES:
+                return lang_part
 
         return None

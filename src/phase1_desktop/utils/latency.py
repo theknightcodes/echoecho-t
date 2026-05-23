@@ -1,6 +1,7 @@
 import csv
 import time
 import os
+import threading
 from collections import deque
 from dataclasses import dataclass, asdict
 from typing import Optional
@@ -25,6 +26,7 @@ class LatencyLogger:
     def __init__(self, log_path: str = "logs/latency.csv"):
         self.log_path = log_path
         self.records = deque(maxlen=10000)
+        self._lock = threading.Lock()
         self._ensure_file()
 
     def _ensure_file(self):
@@ -48,12 +50,13 @@ class LatencyLogger:
         self._write(record)
 
     def _write(self, record: LatencyRecord):
-        with open(self.log_path, "a", newline="") as f:
-            writer = csv.DictWriter(
-                f,
-                fieldnames=["timestamp", "stage", "duration_ms", "details"],
-            )
-            writer.writerow(asdict(record))
+        with self._lock:
+            with open(self.log_path, "a", newline="") as f:
+                writer = csv.DictWriter(
+                    f,
+                    fieldnames=["timestamp", "stage", "duration_ms", "details"],
+                )
+                writer.writerow(asdict(record))
 
     def summary(self) -> dict:
         """Return statistics for each stage."""

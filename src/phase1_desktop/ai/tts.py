@@ -30,7 +30,7 @@ class TTS:
         self.volume = volume
         self.engine = None
         self._init_engine()
-        self._queue = queue.Queue()
+        self._queue = queue.Queue(maxsize=20)
         self._thread = None
         self._running = False
         self._start_worker()

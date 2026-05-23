@@ -10,7 +10,6 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from audio.capture import AudioCapture
-from audio.playback import AudioPlayback
 from ai.vad import VAD
 from ai.stt import STT
 from ai.language_manager import LanguageManager
@@ -103,8 +102,13 @@ class Pipeline:
             except queue.Empty:
                 continue
 
-            with Timer(self.logger, "stt", "whisper transcription"):
-                text, lang = self.stt.transcribe(segment)
+            try:
+                with Timer(self.logger, "stt", "whisper transcription"):
+                    text, lang = self.stt.transcribe(segment)
+            except Exception as e:
+                if self.on_status:
+                    self.on_status(f"STT error: {e}")
+                continue
 
             if not text.strip():
                 continue
@@ -147,8 +151,13 @@ class Pipeline:
                 continue
 
             # Normal translation
-            with Timer(self.logger, "translate", f"to {self.lang_manager.current_lang}"):
-                translated = self.lang_manager.translate(text)
+            try:
+                with Timer(self.logger, "translate", f"to {self.lang_manager.current_lang}"):
+                    translated = self.lang_manager.translate(text)
+            except Exception as e:
+                if self.on_status:
+                    self.on_status(f"Translation error: {e}")
+                continue
 
             if translated.strip():
                 if self.on_translation:
@@ -157,9 +166,10 @@ class Pipeline:
                 self._clear_feedback()
 
     def _clear_feedback(self):
-        """Reset VAD and clear ALL queues after TTS to prevent feedback loop."""
+        """Reset VAD, drain all queues, and mute mic after TTS to prevent feedback loop."""
         self._tts_cooldown_until = time.time() + 3.0
         self.vad.reset()
+        self.capture.drain()
         # Drain all queues
         self._drain_queue(self._stt_queue)
         self._drain_queue(self._trans_queue)

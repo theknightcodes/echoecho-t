@@ -15,10 +15,12 @@ class VAD:
         self,
         threshold: float = 0.5,
         min_speech_duration_ms: float = 250,
+        max_speech_duration_ms: float = 30000,
         sample_rate: int = 16000,
     ):
         self.threshold = threshold
         self.min_speech_duration_ms = min_speech_duration_ms
+        self.max_speech_duration_ms = max_speech_duration_ms
         self.sample_rate = sample_rate
         self.model = None
         self._load_model()
@@ -30,12 +32,21 @@ class VAD:
         self.ring_buffer = np.zeros(0, dtype=np.float32)
 
     def _load_model(self):
-        self.model, _ = torch.hub.load(
-            "snakers4/silero-vad",
-            "silero_vad",
-            trust_repo=True,
-        )
-        self.model.eval()
+        # SECURITY: trust_repo=True downloads code from GitHub.
+        # Phase 2 MUST vendor the model file locally; see:
+        # https://github.com/snakers4/silero-vad/blob/master/models/silero_vad.jit
+        try:
+            self.model, _ = torch.hub.load(
+                "snakers4/silero-vad",
+                "silero_vad",
+                trust_repo=True,
+            )
+            self.model.eval()
+        except Exception as e:
+            raise RuntimeError(
+                "Failed to load Silero VAD. "
+                "Ensure internet connection on first run or vendor the model."
+            ) from e
 
     def process(self, audio_chunk: np.ndarray) -> Optional[np.ndarray]:
         """
@@ -74,6 +85,14 @@ class VAD:
 
             elif self.is_speaking:
                 self.speech_buffer.append(chunk)
+                # Guard against infinite buffer growth
+                duration_ms = len(self.speech_buffer) * 512 / self.sample_rate * 1000
+                if duration_ms >= self.max_speech_duration_ms:
+                    segment = np.concatenate(self.speech_buffer)
+                    self.speech_buffer = []
+                    self.is_speaking = False
+                    self.speech_start = None
+                    return segment
 
         return None
 

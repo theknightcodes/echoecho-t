@@ -67,6 +67,14 @@ class AudioCapture:
         except queue.Empty:
             return None
 
+    def drain(self):
+        """Remove all pending audio chunks from the queue."""
+        while not self._queue.empty():
+            try:
+                self._queue.get_nowait()
+            except queue.Empty:
+                break
+
     def __enter__(self):
         self.start()
         return self

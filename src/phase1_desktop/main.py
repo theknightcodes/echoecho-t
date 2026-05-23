@@ -90,10 +90,7 @@ def main():
 
     def on_translation(text):
         clean = _sanitize_for_tts(text)
-        if clean != text:
-            print(f"  [→]   {clean}")
-        else:
-            print(f"  [→]   {clean}")
+        print(f"  [→]   {clean}")
 
     def on_status(msg):
         print(f"  [STATUS] {msg}")
