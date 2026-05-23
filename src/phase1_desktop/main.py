@@ -30,13 +30,43 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from pipeline.orchestrator_v2 import Pipeline
-from ai.language_manager import LANGUAGE_NAMES
+from ai.language_manager import LANGUAGE_NAMES, LANGUAGE_CODES
 from ai.tts import _sanitize_for_tts
 
 
+_DEFAULT_DURATION = 30
+_DEFAULT_LANG = "de"
+
+
+def _validate_args() -> tuple[int, str]:
+    """Parse and validate CLI arguments."""
+    duration = _DEFAULT_DURATION
+    default_lang = _DEFAULT_LANG
+
+    if len(sys.argv) > 1:
+        try:
+            duration = int(sys.argv[1])
+            if duration < 1 or duration > 3600:
+                print(f"[WARN] Duration must be 1-3600 seconds. Using {_DEFAULT_DURATION}.")
+                duration = _DEFAULT_DURATION
+        except ValueError:
+            print(f"[WARN] Invalid duration '{sys.argv[1]}'. Using {_DEFAULT_DURATION}.")
+
+    if len(sys.argv) > 2:
+        lang = sys.argv[2].lower().strip()
+        if lang not in LANGUAGE_CODES:
+            print(
+                f"[WARN] Unsupported language '{lang}'. "
+                f"Supported: {', '.join(LANGUAGE_CODES.keys())}. Using {_DEFAULT_LANG}."
+            )
+        else:
+            default_lang = lang
+
+    return duration, default_lang
+
+
 def main():
-    duration = int(sys.argv[1]) if len(sys.argv) > 1 else 30
-    default_lang = sys.argv[2] if len(sys.argv) > 2 else "de"
+    duration, default_lang = _validate_args()
 
     print("=" * 60)
     print("EchoEcho-T — Desktop Prototype (Phase 1 v2)")
@@ -61,7 +91,7 @@ def main():
     def on_translation(text):
         clean = _sanitize_for_tts(text)
         if clean != text:
-            print(f"  [→]   {clean}  (raw: {text})")
+            print(f"  [→]   {clean}")
         else:
             print(f"  [→]   {clean}")
 

@@ -62,8 +62,16 @@ class Pipeline:
         self.on_status = None
         self.on_language_switch = None
 
-        # TTS cooldown — ignore mic audio for 1.5s after speaking to prevent feedback loop
+        # TTS cooldown — ignore mic audio after speaking to prevent feedback loop
         self._tts_cooldown_until = 0.0
+
+    def _drain_queue(self, q: queue.Queue):
+        """Remove all pending items from a queue."""
+        while not q.empty():
+            try:
+                q.get_nowait()
+            except queue.Empty:
+                break
 
     def _vad_worker(self):
         """Read audio, detect speech segments."""
@@ -118,11 +126,13 @@ class Pipeline:
                 continue
 
             # Skip very short transcripts — Whisper tiny hallucinates on 1-2 word utterances
-            if len(text.strip()) < 3:
+            stripped = text.strip()
+            if len(stripped) < 3:
                 continue
 
             # Skip obvious TTS feedback: Tamil text getting re-transcribed as English
-            if text.lower().strip() in ("bye", "hi", "dot", "don\'t") and len(text.strip()) <= 4:
+            lower = stripped.lower()
+            if len(stripped) <= 4 and lower in ("bye", "hi", "dot", "don't", "yes", "no", "ok"):
                 print(f"  [SKIP] Short/hallucinated transcript: '{text}'")
                 continue
 
@@ -147,15 +157,12 @@ class Pipeline:
                 self._clear_feedback()
 
     def _clear_feedback(self):
-        """Reset VAD and clear queues after TTS to prevent feedback loop."""
+        """Reset VAD and clear ALL queues after TTS to prevent feedback loop."""
         self._tts_cooldown_until = time.time() + 3.0
         self.vad.reset()
-        # Drain STT queue
-        while not self._stt_queue.empty():
-            try:
-                self._stt_queue.get_nowait()
-            except queue.Empty:
-                break
+        # Drain all queues
+        self._drain_queue(self._stt_queue)
+        self._drain_queue(self._trans_queue)
 
     def start(self):
         """Start all pipeline stages."""
@@ -175,7 +182,10 @@ class Pipeline:
 
         if self.on_status:
             current = self.lang_manager.get_current_language()
-            self.on_status(f"Pipeline started. Speak in English. Translation: {current}. Say 'switch to [language]' to change.")
+            self.on_status(
+                f"Pipeline started. Speak in English. Translation: {current}. "
+                f"Say 'switch to [language]' to change."
+            )
 
     def stop(self):
         """Stop all pipeline stages."""

@@ -8,8 +8,8 @@ audio:
 
 vad:
   model: silero_vad
-  threshold: 0.5
-  min_speech_duration_ms: 250
+  threshold: 0.3
+  min_speech_duration_ms: 500
   speech_pad_ms: 300
   ring_buffer_samples: 512
 
@@ -18,18 +18,20 @@ stt:
   device: cpu
   compute_type: int8
   beam_size: 5
-  language: null         # Auto-detect
+  language: en           # Force English to reduce misdetection
+  condition_on_previous_text: false
   vad_filter: true
   vad_parameters:
-    threshold: 0.5
-    min_speech_duration_ms: 250
+    threshold: 0.3
+    min_speech_duration_ms: 500
     max_speech_duration_s: 30
 
 translation:
-  model: Helsinki-NLP/opus-mt-en-de
-  source_lang: en
-  target_lang: de
-  max_length: 100
+  model: facebook/nllb-200-distilled-600M
+  source_lang: eng_Latn
+  target_lang: deu_Latn
+  max_length: 128
+  torch_dtype: float16
 
 tts:
   # Phase 1: Use system TTS via pyttsx3
@@ -37,9 +39,11 @@ tts:
   engine: pyttsx3
   rate: 150              # Words per minute
   volume: 0.9
+  sanitize_unicode_punctuation: true
+  cooldown_seconds: 3    # Post-TTS mic mute to prevent feedback loop
 
 pipeline:
-  queue_size: 3
+  queue_size: 10
   stage_timeout: 30      # Seconds per stage
 
 logging:

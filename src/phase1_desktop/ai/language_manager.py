@@ -1,5 +1,6 @@
 from typing import Optional, Dict
 import torch
+import re
 
 """
 Language Manager — Phase 1 (NLLB-200-distilled-600M Backend)
@@ -53,28 +54,33 @@ LANGUAGE_NAMES = {
     "pl": "Polish",
 }
 
-# Greeting confirmations per language
+# Greeting confirmations per language — NO punctuation so TTS doesn't read it aloud
 LANGUAGE_GREETINGS = {
-    "de": "Sprache auf Deutsch umgestellt.",
-    "fr": "Langue changée en français.",
-    "es": "Idioma cambiado a español.",
-    "it": "Lingua cambiata in italiano.",
-    "pt": "Idioma alterado para português.",
-    "nl": "Taal gewijzigd naar Nederlands.",
-    "ru": "Язык изменен на русский.",
-    "zh": "语言已切换为中文。",
-    "ja": "言語を日本語に変更しました。",
-    "ko": "언어가 한국어로 변경되었습니다。",
-    "ta": "மொழி தமிழுக்கு மாற்றப்பட்டது。",
-    "hi": "भाषा हिंदी में बदल दी गई है।",
-    "ar": "تم تغيير اللغة إلى العربية.",
-    "tr": "Dil Türkçe olarak değiştirildi.",
-    "pl": "Język zmieniony na polski.",
+    "de": "Sprache auf Deutsch umgestellt",
+    "fr": "Langue changée en français",
+    "es": "Idioma cambiado a español",
+    "it": "Lingua cambiata in italiano",
+    "pt": "Idioma alterado para português",
+    "nl": "Taal gewijzigd naar Nederlands",
+    "ru": "Язык изменен на русский",
+    "zh": "语言已切换为中文",
+    "ja": "言語を日本語に変更しました",
+    "ko": "언어가 한국어로 변경되었습니다",
+    "ta": "மொழி தமிழுக்கு மாற்றப்பட்டது",
+    "hi": "भाषा हिंदी में बदल दी गई है",
+    "ar": "تم تغيير اللغة إلى العربية",
+    "tr": "Dil Türkçe olarak değiştirildi",
+    "pl": "Język zmieniony na polski",
 }
 
 
 class LanguageManager:
     def __init__(self, default_lang: str = "de"):
+        if default_lang not in LANGUAGE_CODES:
+            raise ValueError(
+                f"Invalid default language: {default_lang}. "
+                f"Supported: {list(LANGUAGE_CODES.keys())}"
+            )
         self.current_lang = default_lang
         self._model = None
         self._tokenizer = None
@@ -85,7 +91,7 @@ class LanguageManager:
         if self._model is not None:
             return
 
-        print(f"[LanguageManager] Loading NLLB-200-distilled-600M (one-time, ~2.4GB in fp16)...")
+        print("[LanguageManager] Loading NLLB-200-distilled-600M (one-time ~2.4GB)...")
         from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
         try:
@@ -98,17 +104,22 @@ class LanguageManager:
             )
             self._device = self._model.device
             print(f"[LanguageManager] Model loaded on {self._device}")
-        except Exception as e:
-            print(f"[LanguageManager] ERROR loading {MODEL_NAME}: {e}")
+        except Exception:
             raise RuntimeError(
-                f"Failed to load NLLB-200-distilled-600M. Ensure ~3GB free RAM. Error: {e}"
+                "Failed to load NLLB-200-distilled-600M. "
+                "Ensure ~3GB free RAM and stable internet."
             )
 
     def translate(self, text: str, target_lang: Optional[str] = None) -> str:
         """Translate English text to target language using NLLB-200."""
         lang = target_lang or self.current_lang
-        if not text.strip():
+        text = text.strip()
+        if not text:
             return ""
+
+        # Validate input length (prevent abuse / excessive compute)
+        if len(text) > 500:
+            text = text[:500]
 
         self._load_model()
 
@@ -125,7 +136,6 @@ class LanguageManager:
                 **inputs,
                 forced_bos_token_id=forced_bos,
                 max_new_tokens=128,
-                max_length=None,
             )
 
         result = self._tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
@@ -152,7 +162,9 @@ class LanguageManager:
         except RuntimeError as e:
             return str(e)
 
-        greeting = LANGUAGE_GREETINGS.get(lang_code, f"Language switched to {LANGUAGE_NAMES.get(lang_code, lang_code)}.")
+        greeting = LANGUAGE_GREETINGS.get(
+            lang_code, f"Language switched to {LANGUAGE_NAMES.get(lang_code, lang_code)}"
+        )
         return greeting
 
     def get_current_language(self) -> str:
