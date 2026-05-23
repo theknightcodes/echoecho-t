@@ -29,7 +29,8 @@ class TTS:
         self.rate = rate
         self.volume = volume
         self.engine = None
-        self._init_engine()
+        # NOTE: Do NOT init engine here. macOS NSSpeechSynthesizer
+        # must be initialized on the same thread that calls say()/runAndWait().
         self._queue = queue.Queue(maxsize=20)
         self._thread = None
         self._running = False
@@ -42,9 +43,9 @@ class TTS:
             self.engine = pyttsx3.init()
             self.engine.setProperty("rate", self.rate)
             self.engine.setProperty("volume", self.volume)
-        except ImportError:
-            print("[TTS] pyttsx3 not installed. TTS will be text-only.")
-            print("Install with: pip install pyttsx3")
+        except Exception as e:
+            print(f"[TTS] Could not initialize engine: {e}")
+            self.engine = None
 
     def _start_worker(self):
         """Start background TTS thread."""
@@ -65,6 +66,11 @@ class TTS:
 
     def _speak_sync(self, text: str):
         """Synchronous speak (called from worker thread)."""
+        # macOS safety: NSSpeechSynthesizer must be initialized on the
+        # same thread that calls say() / runAndWait().
+        if self.engine is None:
+            self._init_engine()
+
         clean = _sanitize_for_tts(text)
         if not clean:
             return
