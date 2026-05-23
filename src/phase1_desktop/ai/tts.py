@@ -68,17 +68,25 @@ class TTS:
         """Synchronous speak (called from worker thread)."""
         # macOS safety: NSSpeechSynthesizer must be initialized on the
         # same thread that calls say() / runAndWait().
+        print(f"[TTS-DEBUG] _speak_sync called with: '{text[:50]}...'")
         if self.engine is None:
+            print("[TTS-DEBUG] Engine is None, initializing...")
             self._init_engine()
+            print(f"[TTS-DEBUG] Engine init result: {self.engine is not None}")
 
         clean = _sanitize_for_tts(text)
+        print(f"[TTS-DEBUG] Sanitized: '{clean[:50]}...'")
         if not clean:
+            print("[TTS-DEBUG] Empty after sanitize, skipping")
             return
         if self.engine:
+            print("[TTS-DEBUG] Calling engine.say()...")
             self.engine.say(clean)
+            print("[TTS-DEBUG] Calling engine.runAndWait()...")
             self.engine.runAndWait()
+            print("[TTS-DEBUG] runAndWait() returned")
         else:
-            print(f"[TTS] {clean}")
+            print(f"[TTS-DEBUG] No engine, printing text: {clean}")
 
     def speak(self, text: str):
         """Queue text to be spoken (non-blocking)."""
