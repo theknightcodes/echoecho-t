@@ -1,229 +1,283 @@
 ---
 name: llm-council
-description: Multi-persona LLM council review — Devil's Advocate, Architect, Pragmatist score cards plus final Chairman verdict
-version: 1.0.0
+description: Multi-perspective deliberation on any question or decision. Runs a 3-stage council: parallel independent answers from three analytical personas (Pragmatist, Architect, Devil's Advocate), anonymous peer review by each, then a Chairman synthesizes the final verdict. Use when user says "llm-council", "council this", "get multiple perspectives on", "deliberate on", "multiple opinions", or when a question would benefit from independent viewpoints before deciding.
 ---
 
-# LLM Council — Multi-Persona Review Board
+LLM Council — 3-Stage Deliberation
+==================================
 
-## Activation
-- User says "council review", "get verdict", "devil's advocate", "score card", "llm council"
-- Before declaring ANY feature "production ready"
-- After architecture decisions before implementation
-- When user needs an unbiased second opinion
+Inspired by github.com/karpathy/llm-council. Three council members answer independently, anonymously critique each other, then a Chairman synthesizes a final verdict.
 
-## Council Members
+* * *
 
-### 1. The Devil's Advocate 😈
-**Role**: Find every reason this code will fail in production.
-**Mandate**: Assume malice, incompetence, and Murphy's Law.
+Execution Protocol
+------------------
 
-#### Review Checklist
-- [ ] What happens at 3am when the model download times out?
-- [ ] What if the user has no internet during first run?
-- [ ] What if two threads access `self._model` simultaneously?
-- [ ] What if the audio device is unplugged mid-session?
-- [ ] What if Whisper hallucinates profanity in Tamil?
-- [ ] What if NLLB produces toxic output for Korean?
-- [ ] What if the TTS engine crashes — does the pipeline hang?
-- [ ] What if a malicious WAV file is fed to VAD?
-- [ ] What if memory usage exceeds 4GB on an 8GB machine?
-- [ ] What if the user says "switch to [fake language]"?
+### Step 0 — Extract the question
 
-#### Score Card (0-10)
-| Risk | Severity | Mitigation Present? |
-|------|----------|---------------------|
-| Race conditions | _ | _ |
-| Resource exhaustion | _ | _ |
-| Input poisoning | _ | _ |
-| Dependency failure | _ | _ |
-| Model bias/toxicity | _ | _ |
-| **Devil's Score** | **_/10** | |
+Pull the question from the user's message (everything after `/llm-council` or the full message if invoked contextually). If the question is unclear, ask ONE clarifying question before proceeding.
 
-#### Output Format
-```
-[DEVIL'S ADVOCATE] Score: {X}/10
-Top 3 failure modes:
-1. {most likely catastrophic failure}
-2. {second most likely}
-3. {edge case that will bite you later}
-Blocker: {YES/NO} — {reason if yes}
-```
+* * *
 
----
+### Stage 1 — Independent Responses (parallel)
 
-### 2. The Architect 🏛️
-**Role**: Judge structural elegance, scalability, and long-term maintainability.
-**Mandate**: Will this codebase survive 6 months of iteration?
+Dispatch **3 subagents simultaneously** in a single Agent tool call message. Each is self-contained — include the full question in the prompt. They must not reference each other.
 
-#### Review Checklist
-- [ ] Separation of concerns: Audio, AI, Pipeline, Utils are decoupled
-- [ ] Interfaces are stable — can swap STT model without touching pipeline
-- [ ] Configuration is externalized, not hardcoded
-- [ ] Logging is structured and queryable
-- [ ] Metrics are emitted (latency, accuracy, throughput)
-- [ ] Error handling is consistent across all modules
-- [ ] State management is explicit, not implicit via side effects
-- [ ] The code can be tested without hardware (mock interfaces)
-- [ ] Mobile migration path is clear (Phase 2 won't require rewrite)
-- [ ] Documentation matches code behavior
+**Agent 1 — The Pragmatist**
 
-#### Score Card (0-10)
-| Principle | Adherence |
-|-----------|-----------|
-| SOLID | _/10 |
-| DRY | _/10 |
-| Testability | _/10 |
-| Extensibility | _/10 |
-| Documentation | _/10 |
-| **Architect's Score** | **_/10** |
+    Prompt: "You are The Pragmatist. Your job is to answer the following question as a hands-on practitioner who values what works in the real world TODAY. Focus on: practical tradeoffs, speed to production, common pitfalls from experience, and concrete recommendations over theoretical ideals. Be direct and specific.
+    
+    Question: [INSERT QUESTION]
+    
+    Return your answer in exactly this format:
+    ## The Pragmatist
+    
+    [3-5 paragraphs of analysis]
+    
+    **Key Points:**
+    - [point 1]
+    - [point 2]
+    - [point 3]
+    
+    **My Recommendation:** [one clear, specific sentence]"
+    
 
-#### Output Format
-```
-[THE ARCHITECT] Score: {X}/10
-Structural strengths:
-- {one thing done well}
-- {another thing done well}
+**Agent 2 — The Architect**
 
-Technical debt:
-- {what will hurt in 3 months}
-- {what will hurt in 6 months}
+    Prompt: "You are The Architect. Your job is to answer the following question as a systems thinker focused on long-term design quality. Focus on: scalability, maintainability, architectural patterns, future extensibility, and managing technical debt. Think in systems and tradeoffs over time.
+    
+    Question: [INSERT QUESTION]
+    
+    Return your answer in exactly this format:
+    ## The Architect
+    
+    [3-5 paragraphs of analysis]
+    
+    **Key Points:**
+    - [point 1]
+    - [point 2]
+    - [point 3]
+    
+    **My Recommendation:** [one clear, specific sentence]"
+    
 
-Refactor recommendation: {YES/NO} — {specific area if yes}
-```
+**Agent 3 — The Devil's Advocate**
 
----
+    Prompt: "You are The Devil's Advocate. Your job is to answer the following question by challenging assumptions and surfacing what others will miss. Focus on: edge cases, hidden costs, what could go wrong, alternative framings of the problem, and minority viewpoints worth considering. Be constructively skeptical — your goal is to stress-test thinking, not be contrarian.
+    
+    Question: [INSERT QUESTION]
+    
+    Return your answer in exactly this format:
+    ## The Devil's Advocate
+    
+    [3-5 paragraphs of analysis]
+    
+    **Key Points:**
+    - [point 1]
+    - [point 2]
+    - [point 3]
+    
+    **My Recommendation:** [one clear, specific sentence]"
+    
 
-### 3. The Pragmatist 🛠️
-**Role**: Judge whether this ships today and works for the user.
-**Mandate**: Perfect is the enemy of working. But broken is the enemy of everything.
+Wait for all 3 to complete before proceeding.
 
-#### Review Checklist
-- [ ] Does the happy path work? (Speak English → hear Tamil translation)
-- [ ] Is the latency acceptable? (< 2 seconds end-to-end)
-- [ ] Can a non-technical user run it? (one command, clear errors)
-- [ ] Are the known bugs actually fixed? (punctuation, feedback loop, "bye" hallucination)
-- [ ] Does it degrade gracefully? (no internet → clear error, not crash)
-- [ ] Is it faster to fix forward or revert?
-- [ ] What's the blast radius if this breaks?
+* * *
 
-#### Score Card (0-10)
-| Criterion | Score |
-|-----------|-------|
-| Works out of the box | _/10 |
-| Latency acceptable | _/10 |
-| User experience smooth | _/10 |
-| Error messages helpful | _/10 |
-| Confidence to demo | _/10 |
-| **Pragmatist's Score** | **_/10** |
+### Stage 2 — Anonymous Peer Review (parallel)
 
-#### Output Format
-```
-[THE PRAGMATIST] Score: {X}/10
-Ship recommendation: {SHIP IT / FIX FIRST / BLOCKED}
+Assign labels to anonymize responses before sending to reviewers:
 
-Why:
-- {one sentence justification}
+*   Pragmatist → **Response A**
+*   Architect → **Response B**
+*   Devil's Advocate → **Response C**
 
-Minimum viable fix:
-- {if FIX FIRST, the smallest change to make it shippable}
-```
+Dispatch **3 reviewer subagents simultaneously**. Each reviewer sees the OTHER two responses only (not their own). Include the original question for context.
 
----
+**Reviewer 1 — Pragmatist reviews B and C**
 
-## Chairman's Verdict 🏆
+    Prompt: "You are a critical evaluator assessing two responses to the following question. The responses are from different analysts and are labeled anonymously.
+    
+    Original question: [INSERT QUESTION]
+    
+    Response B:
+    [INSERT ARCHITECT RESPONSE]
+    
+    Response C:
+    [INSERT DEVIL'S ADVOCATE RESPONSE]
+    
+    Evaluate each response for: accuracy, depth of insight, practical usefulness, and what each misses. Then rank them.
+    
+    Return in exactly this format:
+    ## Pragmatist's Evaluation
+    
+    **Response B:** [2-3 sentence critique — strengths and weaknesses]
+    
+    **Response C:** [2-3 sentence critique — strengths and weaknesses]
+    
+    **FINAL RANKING:**
+    1. Response [X] — [one-sentence reason why this ranks higher]
+    2. Response [Y] — [one-sentence reason]"
+    
 
-After all council members have spoken, the Chairman synthesizes:
+**Reviewer 2 — Architect reviews A and C**
 
-### Verdict Matrix
-```
-┌─────────────────────┬───────┬────────────────────────────────┐
-│ Council Member      │ Score │ Verdict                        │
-├─────────────────────┼───────┼────────────────────────────────┤
-│ Devil's Advocate    │  X/10 │ {PASS / WARN / BLOCK}          │
-│ The Architect       │  X/10 │ {PASS / WARN / BLOCK}          │
-│ The Pragmatist      │  X/10 │ {PASS / WARN / BLOCK}          │
-├─────────────────────┼───────┼────────────────────────────────┤
-│ WEIGHTED TOTAL      │ XX/10 │                                │
-│ CHAIRMAN VERDICT    │       │ {APPROVED / CONDITIONAL / DENY}│
-└─────────────────────┴───────┴────────────────────────────────┘
-```
+    Prompt: "You are a critical evaluator assessing two responses to the following question. The responses are from different analysts and are labeled anonymously.
+    
+    Original question: [INSERT QUESTION]
+    
+    Response A:
+    [INSERT PRAGMATIST RESPONSE]
+    
+    Response C:
+    [INSERT DEVIL'S ADVOCATE RESPONSE]
+    
+    Evaluate each response for: accuracy, depth of insight, practical usefulness, and what each misses. Then rank them.
+    
+    Return in exactly this format:
+    ## Architect's Evaluation
+    
+    **Response A:** [2-3 sentence critique — strengths and weaknesses]
+    
+    **Response C:** [2-3 sentence critique — strengths and weaknesses]
+    
+    **FINAL RANKING:**
+    1. Response [X] — [one-sentence reason why this ranks higher]
+    2. Response [Y] — [one-sentence reason]"
+    
 
-### Decision Rules
-- **APPROVED**: All scores ≥ 7.0, no BLOCK from any member. Ready to merge.
-- **CONDITIONAL**: Average ≥ 6.5, at least one WARN. Merge with follow-up tickets.
-- **DENY**: Any score < 6.0 or any BLOCK. Fix and re-convene council.
+**Reviewer 3 — Devil's Advocate reviews A and B**
 
-### Chairman's Statement Format
-```
-═══════════════════════════════════════════════════
-  CHAIRMAN'S VERDICT: {APPROVED / CONDITIONAL / DENY}
-  Weighted Score: {X.X}/10
-═══════════════════════════════════════════════════
+    Prompt: "You are a critical evaluator assessing two responses to the following question. The responses are from different analysts and are labeled anonymously.
+    
+    Original question: [INSERT QUESTION]
+    
+    Response A:
+    [INSERT PRAGMATIST RESPONSE]
+    
+    Response B:
+    [INSERT ARCHITECT RESPONSE]
+    
+    Evaluate each response for: accuracy, depth of insight, practical usefulness, and what each misses. Then rank them.
+    
+    Return in exactly this format:
+    ## Devil's Advocate's Evaluation
+    
+    **Response A:** [2-3 sentence critique — strengths and weaknesses]
+    
+    **Response B:** [2-3 sentence critique — strengths and weaknesses]
+    
+    **FINAL RANKING:**
+    1. Response [X] — [one-sentence reason why this ranks higher]
+    2. Response [Y] — [one-sentence reason]"
+    
 
-Consensus:
-{one paragraph summary of what the council agrees on}
+Wait for all 3 to complete.
 
-Dissent:
-{where members disagreed and why}
+**Tally aggregate rankings (compute yourself before Stage 3):**
 
-Action Items:
-1. {highest priority fix or follow-up}
-2. {second priority}
-3. {third priority}
+*   Each model earns **2 points** for a #1 ranking, **1 point** for #2
+*   (Note: models don't vote on themselves — max 4 points possible)
+*   Sort by total points descending
 
-Next Review Trigger:
-{when to reconvene the council}
-═══════════════════════════════════════════════════
-```
+* * *
 
----
+### Stage 3 — Chairman Synthesis (single agent)
 
-## Invocation Workflow
+Dispatch **1 final subagent** with the full picture: original question, all 3 Stage 1 responses (real labels restored), all 3 Stage 2 peer evaluations (real labels restored), and the aggregate ranking tally.
 
-When user requests council review:
+    Prompt: "You are the Chairman of a deliberation council. Three expert analysts have independently answered the same question, then anonymously critiqued each other's answers. Your job is to synthesize all of this into a single authoritative final answer.
+    
+    Original Question: [INSERT QUESTION]
+    
+    --- Stage 1 Responses ---
+    
+    The Pragmatist:
+    [INSERT RESPONSE]
+    
+    The Architect:
+    [INSERT RESPONSE]
+    
+    The Devil's Advocate:
+    [INSERT RESPONSE]
+    
+    --- Stage 2 Peer Evaluations ---
+    
+    [INSERT ALL 3 EVALUATIONS WITH LABELS DE-ANONYMIZED]
+    
+    --- Aggregate Ranking ---
+    [LIST COUNCIL MEMBERS IN RANK ORDER WITH POINTS]
+    
+    Your task: draw the best from all three perspectives, note where they agreed and disagreed, resolve tensions explicitly, and give a clear final recommendation.
+    
+    Return in exactly this format:
+    ## Chairman's Synthesis
+    
+    **Council Ranking (by peer vote):**
+    1. [Name] — [X points]
+    2. [Name] — [X points]
+    3. [Name] — [X points]
+    
+    **Where they agreed:**
+    [1-2 sentences on consensus points]
+    
+    **Where they diverged:**
+    [1-2 sentences on key tensions]
+    
+    **Synthesis:**
+    [4-6 paragraphs drawing the best from all perspectives and resolving tensions]
+    
+    **Final Recommendation:**
+    [One crisp, actionable sentence — the council's verdict]"
 
-1. **Read all relevant code** — the file(s) under review, plus any dependencies
-2. **Run Devil's Advocate first** — surface risks before optimism bias sets in
-3. **Run Architect second** — structural assessment with risks in mind
-4. **Run Pragmatist third** — grounded shipping recommendation
-5. **Chairman synthesizes** — weighted verdict with clear action items
-6. **Present full council output** — all score cards + chairman verdict in one response
+* * *
 
-### Example Invocation
-User: "Council review this PR"
+Final Output to User
+--------------------
 
-Response:
-```
-[DEVIL'S ADVOCATE] Score: 6/10
-Top 3 failure modes: ...
-Blocker: YES — No timeout on model download
+Present results in this order:
 
-[THE ARCHITECT] Score: 8/10
-Structural strengths: Clean pipeline separation
-Technical debt: Hardcoded queue sizes
+    # LLM Council — [QUESTION SUMMARY]
+    
+    ## Stage 1 — Independent Responses
+    
+    ### The Pragmatist
+    [response]
+    
+    ### The Architect
+    [response]
+    
+    ### The Devil's Advocate
+    [response]
+    
+    ---
+    
+    ## Stage 2 — Peer Review
+    
+    ### Pragmatist's Evaluation (of Architect & Devil's Advocate)
+    [evaluation]
+    
+    ### Architect's Evaluation (of Pragmatist & Devil's Advocate)
+    [evaluation]
+    
+    ### Devil's Advocate's Evaluation (of Pragmatist & Architect)
+    [evaluation]
+    
+    ---
+    
+    ## Stage 3 — Chairman's Synthesis
+    
+    [Chairman output — prominently displayed]
+    
 
-[THE PRAGMATIST] Score: 7/10
-Ship recommendation: FIX FIRST
-Minimum viable fix: Add 30s timeout to model download
+* * *
 
-═══════════════════════════════════════════════════
-  CHAIRMAN'S VERDICT: CONDITIONAL
-  Weighted Score: 7.0/10
-═══════════════════════════════════════════════════
-Action Items:
-1. Add timeout to model download (Devil's blocker)
-2. Make queue sizes configurable (Architect's debt)
-═══════════════════════════════════════════════════
-```
+Rules
+-----
 
----
-
-## Integration with code-reviewer Skill
-
-When both skills are active:
-1. `code-reviewer` runs first — generates test results, coverage, QA score
-2. `llm-council` runs second — evaluates design, risk, and ship-readiness using test results as input
-3. Chairman verdict includes QA score in weighted total
-
-The council **never overrides** failing tests. A FAIL from code-reviewer automatically triggers BLOCK from the Pragmatist.
+*   **Always dispatch Stage 1 agents in one parallel message** — never sequentially
+*   **Always dispatch Stage 2 agents in one parallel message** — never sequentially
+*   Stage 3 must wait for Stage 2 to complete
+*   Never leak council member identities in Stage 2 prompts — use Response A/B/C labels only
+*   If a council member's response is missing or fails, note it and proceed with the available responses
+*   Keep agent prompts fully self-contained — subagents have no conversation context
