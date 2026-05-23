@@ -146,7 +146,7 @@ class Pipeline:
                 confirmation = self.lang_manager.switch_language(switch_lang)
                 if self.on_language_switch:
                     self.on_language_switch(switch_lang, confirmation)
-                self.tts.speak(confirmation)
+                self.tts.speak(confirmation, self.lang_manager.current_lang)
                 self._clear_feedback()
                 continue
 
@@ -162,7 +162,7 @@ class Pipeline:
             if translated.strip():
                 if self.on_translation:
                     self.on_translation(translated)
-                self.tts.speak(translated)
+                self.tts.speak(translated, self.lang_manager.current_lang)
                 self._clear_feedback()
 
     def _clear_feedback(self):

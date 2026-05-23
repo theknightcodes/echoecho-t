@@ -1,3 +1,4 @@
+import asyncio
 import subprocess
 import threading
 import queue
@@ -8,20 +9,38 @@ from typing import Optional
 """
 Text-to-Speech Wrapper — Phase 1
 
-Phase 1 uses macOS `say` (system TTS) because pyttsx3 is silently
-broken on macOS Sonoma — runAndWait() returns with no audio.
-Phase 2+ will switch to Piper TTS for better quality and language
-support (Tamil, Japanese, etc.).
+Backend priority:
+1. edge-tts (Microsoft Edge, free, 100+ languages, natural voice)
+2. macOS say (native, no install, limited languages)
+3. Print text (fallback)
+
+Phase 2+ will switch to Piper TTS for fully offline operation.
 """
+
+# Language code → edge-tts voice mapping
+_EDGE_TTS_VOICES = {
+    "de": "de-DE-KatjaNeural",
+    "fr": "fr-FR-DeniseNeural",
+    "es": "es-ES-ElviraNeural",
+    "it": "it-IT-ElsaNeural",
+    "pt": "pt-BR-FranciscaNeural",
+    "nl": "nl-NL-ColetteNeural",
+    "ru": "ru-RU-SvetlanaNeural",
+    "zh": "zh-CN-XiaoxiaoNeural",
+    "ja": "ja-JP-NanamiNeural",
+    "ko": "ko-KR-SunHiNeural",
+    "ta": "ta-IN-PallaviNeural",
+    "hi": "hi-IN-SwaraNeural",
+    "ar": "ar-SA-ZariyahNeural",
+    "tr": "tr-TR-EmelNeural",
+    "pl": "pl-PL-AgnieszkaNeural",
+}
 
 
 def _sanitize_for_tts(text: str) -> str:
     """Strip all punctuation that TTS reads aloud as words."""
-    # Remove leading dash + space (some models prefix "- ")
     text = re.sub(r"^-\s+", "", text)
-    # Remove ALL punctuation characters (Unicode categories starting with 'P')
     text = ''.join(ch for ch in text if not unicodedata.category(ch).startswith('P'))
-    # Collapse multiple spaces into one
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
@@ -33,58 +52,94 @@ class TTS:
         self._queue = queue.Queue(maxsize=20)
         self._thread = None
         self._running = False
+        self._edge_tts_available = self._check_edge_tts()
         self._start_worker()
 
+    def _check_edge_tts(self) -> bool:
+        """Check if edge-tts is installed."""
+        try:
+            import edge_tts
+            return True
+        except ImportError:
+            print("[TTS] edge-tts not installed. Tamil/Japanese/Hindi/Arabic/etc. will be silent.")
+            print("        Install with: pip install edge-tts")
+            return False
+
     def _start_worker(self):
-        """Start background TTS thread."""
         self._running = True
         self._thread = threading.Thread(target=self._worker, name="TTS-Worker", daemon=True)
         self._thread.start()
 
     def _worker(self):
-        """Background thread that speaks queued text."""
         while self._running:
             try:
-                text = self._queue.get(timeout=0.5)
+                item = self._queue.get(timeout=0.5)
             except queue.Empty:
                 continue
-            if text is None:
+            if item is None:
                 break
-            self._speak_sync(text)
+            text, lang = item
+            self._speak_sync(text, lang)
 
-    def _speak_sync(self, text: str):
-        """Synchronous speak via macOS `say` command."""
+    def _speak_sync(self, text: str, lang: str = "en"):
         clean = _sanitize_for_tts(text)
         if not clean:
             return
+
+        # Try edge-tts first (supports all 15 languages)
+        if self._edge_tts_available:
+            try:
+                voice = _EDGE_TTS_VOICES.get(lang, "en-US-AriaNeural")
+                asyncio.run(self._edge_tts_speak(clean, voice))
+                return
+            except Exception as e:
+                print(f"[TTS] edge-tts failed: {e}, falling back to say")
+
+        # Fallback to macOS say (only supports a subset)
         try:
-            # Use macOS `say` because pyttsx3 is silently broken on Sonoma.
-            # rate: words per minute (80-450). We map our 150 default.
-            cmd = [
-                "say",
-                "-r", str(self.rate),
-                clean,
-            ]
-            subprocess.run(cmd, check=True, timeout=30.0)
+            subprocess.run(["say", "-r", str(self.rate), clean], check=True, timeout=30.0)
         except FileNotFoundError:
-            # Fallback: print if `say` not available (Linux, etc.)
             print(f"[TTS] {clean}")
         except subprocess.TimeoutExpired:
             print(f"[TTS] Timeout speaking: {clean[:50]}")
         except Exception as e:
             print(f"[TTS] Error: {e}")
 
-    def speak(self, text: str):
+    async def _edge_tts_speak(self, text: str, voice: str):
+        import edge_tts
+        import tempfile
+        import sounddevice as sd
+        import soundfile as sf
+
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+            mp3_path = f.name
+
+        try:
+            communicate = edge_tts.Communicate(text, voice)
+            await communicate.save(mp3_path)
+
+            data, samplerate = sf.read(mp3_path, dtype="float32")
+            if data.ndim > 1:
+                data = data.mean(axis=1)
+            sd.play(data, samplerate)
+            sd.wait()
+        finally:
+            import os
+            try:
+                os.remove(mp3_path)
+            except OSError:
+                pass
+
+    def speak(self, text: str, lang: str = "en"):
         """Queue text to be spoken (non-blocking)."""
         if not text.strip():
             return
         try:
-            self._queue.put_nowait(text)
+            self._queue.put_nowait((text, lang))
         except queue.Full:
             print("[TTS] Queue full, dropping utterance")
 
     def stop(self):
-        """Stop the TTS worker."""
         self._running = False
         try:
             self._queue.put_nowait(None)
@@ -93,10 +148,6 @@ class TTS:
         if self._thread:
             self._thread.join(timeout=2.0)
 
-    def synthesize(self, text: str) -> Optional[object]:
-        """
-        Synthesize text to audio array.
-        Returns None in Phase 1 (`say` doesn't expose audio buffer).
-        """
-        self.speak(text)
+    def synthesize(self, text: str, lang: str = "en") -> Optional[object]:
+        self.speak(text, lang)
         return None
