@@ -198,4 +198,11 @@ class LanguageManager:
             if lang_part in LANGUAGE_CODES:
                 return lang_part
 
+            # Allow trailing words, e.g. "switch to Tamil please"
+            first_word = lang_part.split(" ", 1)[0] if lang_part else ""
+            if first_word in name_to_code:
+                return name_to_code[first_word]
+            if first_word in LANGUAGE_CODES:
+                return first_word
+
         return None

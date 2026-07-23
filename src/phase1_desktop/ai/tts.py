@@ -36,6 +36,29 @@ _EDGE_TTS_VOICES = {
     "pl": "pl-PL-AgnieszkaNeural",
 }
 
+# Language code → macOS `say` voice (used when edge-tts is unavailable/fails).
+# Without this, `say` uses the default English voice, which cannot pronounce
+# non-Latin scripts like Tamil/Hindi/Arabic/etc. — output is garbled.
+_SAY_VOICES = {
+    "de": "Anna",
+    "fr": "Thomas",
+    "es": "Monica",
+    "it": "Alice",
+    "pt": "Luciana",
+    "nl": "Xander",
+    "ru": "Milena",
+    "zh": "Tingting",
+    "ja": "Kyoko",
+    "ko": "Yuna",
+    "ta": "Vani",
+    "hi": "Lekha",
+    "ar": "Majed",
+    "tr": "Yelda",
+    "pl": "Zosia",
+}
+
+_EDGE_TTS_MAX_ATTEMPTS = 3
+
 
 def _sanitize_for_tts(text: str) -> str:
     """Strip all punctuation that TTS reads aloud as words."""
@@ -86,18 +109,29 @@ class TTS:
         if not clean:
             return
 
-        # Try edge-tts first (supports all 15 languages)
+        # Try edge-tts first (supports all 15 languages). It occasionally fails
+        # with transient connection errors, so retry a couple times before
+        # giving up on it entirely.
         if self._edge_tts_available:
-            try:
-                voice = _EDGE_TTS_VOICES.get(lang, "en-US-AriaNeural")
-                asyncio.run(self._edge_tts_speak(clean, voice))
-                return
-            except Exception as e:
-                print(f"[TTS] edge-tts failed: {e}, falling back to say")
+            voice = _EDGE_TTS_VOICES.get(lang, "en-US-AriaNeural")
+            for attempt in range(1, _EDGE_TTS_MAX_ATTEMPTS + 1):
+                try:
+                    asyncio.run(self._edge_tts_speak(clean, voice))
+                    return
+                except Exception as e:
+                    print(f"[TTS] edge-tts attempt {attempt}/{_EDGE_TTS_MAX_ATTEMPTS} failed: {e}")
+            print("[TTS] edge-tts exhausted retries, falling back to say")
 
-        # Fallback to macOS say (only supports a subset)
+        # Fallback to macOS say — use the language's native voice so
+        # non-Latin scripts (Tamil, Hindi, Arabic, etc.) are pronounced
+        # correctly instead of read with the default English voice.
+        say_voice = _SAY_VOICES.get(lang)
+        say_cmd = ["say", "-r", str(self.rate)]
+        if say_voice:
+            say_cmd += ["-v", say_voice]
+        say_cmd.append(clean)
         try:
-            subprocess.run(["say", "-r", str(self.rate), clean], check=True, timeout=30.0)
+            subprocess.run(say_cmd, check=True, timeout=30.0)
         except FileNotFoundError:
             print(f"[TTS] {clean}")
         except subprocess.TimeoutExpired:

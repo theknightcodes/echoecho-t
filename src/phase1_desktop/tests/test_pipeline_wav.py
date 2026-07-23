@@ -52,7 +52,7 @@ def test_wav_pipeline(audio_path: str, target_lang: str = "de"):
     # Confirm target language
     greeting = lm.switch_language(target_lang)
     print(f"[TTS] {greeting}")
-    tts.speak(greeting)
+    tts.speak(greeting, target_lang)
     time.sleep(2)
 
     # Feed audio through VAD in 512-sample chunks
@@ -91,7 +91,7 @@ def test_wav_pipeline(audio_path: str, target_lang: str = "de"):
             confirmation = lm.switch_language(switch_lang)
             print(f"  [SWITCH] → {LANGUAGE_NAMES.get(switch_lang, switch_lang)}")
             print(f"  [TTS] {confirmation}")
-            tts.speak(confirmation)
+            tts.speak(confirmation, switch_lang)
             time.sleep(2)
             continue
 
@@ -102,7 +102,7 @@ def test_wav_pipeline(audio_path: str, target_lang: str = "de"):
         print(f"  [→]    {translated}  ({elapsed:.3f}s)")
 
         # Speak
-        tts.speak(translated)
+        tts.speak(translated, lm.current_lang)
         time.sleep(2)
 
     tts.stop()

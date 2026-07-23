@@ -102,7 +102,7 @@ def test_translation_tts_chain():
     print(f"  DE: '{translated}' ({trans_time:.3f}s)")
 
     # TTS (text-only if pyttsx3 not available)
-    tts.speak(translated)
+    tts.speak(translated, translator.target_lang)
     print(f"  PASS: Translation → TTS works")
 
 

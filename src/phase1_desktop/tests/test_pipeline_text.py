@@ -37,7 +37,7 @@ def test_text_pipeline(target_lang: str = "de"):
     # Confirm target language
     greeting = lm.switch_language(target_lang)
     print(f"[TTS] {greeting}")
-    tts.speak(greeting)
+    tts.speak(greeting, target_lang)
     print()
 
     while True:
@@ -60,7 +60,7 @@ def test_text_pipeline(target_lang: str = "de"):
             confirmation = lm.switch_language(switch_lang)
             print(f"  [SWITCH] → {LANGUAGE_NAMES.get(switch_lang, switch_lang)}")
             print(f"  [TTS] {confirmation}")
-            tts.speak(confirmation)
+            tts.speak(confirmation, switch_lang)
             continue
 
         # Translate
@@ -72,7 +72,7 @@ def test_text_pipeline(target_lang: str = "de"):
         print(f"  [→]    {target_lang.upper()}: {translated}  ({elapsed:.3f}s)")
 
         # Speak
-        tts.speak(translated)
+        tts.speak(translated, lm.current_lang)
         print()
 
 
