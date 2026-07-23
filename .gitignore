@@ -9,7 +9,7 @@ env/
 *.onnx
 *.gguf
 *.bin
-models/
+/models/
 voices/
 checkpoints/
 *.wav
