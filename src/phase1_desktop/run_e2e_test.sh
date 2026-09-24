@@ -28,17 +28,17 @@ if command -v conda &>/dev/null; then
         echo "Activated conda environment: ${CONDA_ENV}"
     else
         echo "Warning: conda env '${CONDA_ENV}' not found. Trying project venv..."
-        if [ -f "venv/bin/activate" ]; then
+        if [ -f "../../venv/bin/activate" ]; then
             # shellcheck source=/dev/null
-            source venv/bin/activate
+            source ../../venv/bin/activate
             echo "Activated project venv."
         else
             echo "Warning: No venv found. Using system Python."
         fi
     fi
-elif [ -f "venv/bin/activate" ]; then
+elif [ -f "../../venv/bin/activate" ]; then
     # shellcheck source=/dev/null
-    source venv/bin/activate
+    source ../../venv/bin/activate
     echo "Activated project venv."
 else
     echo "Warning: No conda or venv found. Using system Python."

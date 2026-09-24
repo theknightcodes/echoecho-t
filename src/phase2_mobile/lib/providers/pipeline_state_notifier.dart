@@ -13,25 +13,62 @@ class PipelineStateNotifier extends StateNotifier<PipelineStatus> {
 
   final NativeChannelService _nativeChannel;
 
+  bool _busy = false;
+
   Future<void> start(String sourceLanguage, String targetLanguage) async {
-    state = state.copyWith(stage: PipelineStage.listening);
-    await _nativeChannel.startPipeline(
-      sourceLanguage: sourceLanguage,
-      targetLanguage: targetLanguage,
-    );
+    if (_busy ||
+        state.stage == PipelineStage.listening ||
+        state.stage == PipelineStage.processing ||
+        state.stage == PipelineStage.speaking) {
+      return;
+    }
+    _busy = true;
+    try {
+      await _nativeChannel.startPipeline(
+        sourceLanguage: sourceLanguage,
+        targetLanguage: targetLanguage,
+      );
+      if (mounted) state = const PipelineStatus(stage: PipelineStage.listening);
+    } catch (_) {
+      if (mounted) {
+        state = const PipelineStatus(
+          stage: PipelineStage.error,
+          message:
+              'Translation could not start. The native translation engine '
+              'is not available in this build.',
+        );
+      }
+    } finally {
+      _busy = false;
+    }
   }
 
   Future<void> stop() async {
-    await _nativeChannel.stopPipeline();
-    state = state.copyWith(stage: PipelineStage.idle);
+    if (_busy) return;
+    _busy = true;
+    try {
+      await _nativeChannel.stopPipeline();
+      if (mounted) state = const PipelineStatus();
+    } catch (_) {
+      if (mounted) {
+        state = const PipelineStatus(
+          stage: PipelineStage.error,
+          message: 'Translation could not stop. Close the app and try again.',
+        );
+      }
+    } finally {
+      _busy = false;
+    }
   }
 
   void onStatusUpdate(StatusUpdate status) {
-    state = PipelineStatus(stage: status.stage, message: status.message);
+    if (mounted) {
+      state = PipelineStatus(stage: status.stage, message: status.message);
+    }
   }
 }
 
 final pipelineStateProvider =
     StateNotifierProvider<PipelineStateNotifier, PipelineStatus>((ref) {
-  return PipelineStateNotifier(ref.watch(nativeChannelServiceProvider));
-});
+      return PipelineStateNotifier(ref.watch(nativeChannelServiceProvider));
+    });

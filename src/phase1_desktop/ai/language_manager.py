@@ -121,12 +121,11 @@ class LanguageManager:
         if len(text) > 500:
             text = text[:500]
 
-        self._load_model()
-
         flores_code = LANGUAGE_CODES.get(lang)
         if not flores_code:
             raise ValueError(f"Unsupported language: {lang}")
 
+        self._load_model()
         self._tokenizer.src_lang = "eng_Latn"
         inputs = self._tokenizer(text, return_tensors="pt").to(self._device)
         forced_bos = self._tokenizer.convert_tokens_to_ids(flores_code)
@@ -156,12 +155,6 @@ class LanguageManager:
 
         self.current_lang = lang_code
 
-        # Warm up model on first switch
-        try:
-            self._load_model()
-        except RuntimeError as e:
-            return str(e)
-
         greeting = LANGUAGE_GREETINGS.get(
             lang_code, f"Language switched to {LANGUAGE_NAMES.get(lang_code, lang_code)}"
         )
@@ -172,7 +165,7 @@ class LanguageManager:
 
     def is_switch_command(self, text: str) -> Optional[str]:
         """Detect if text is a language switch command."""
-        text_lower = text.lower().strip()
+        text_lower = text.lower().strip().rstrip(".!?")
 
         switch_patterns = [
             "switch to ", "change to ", "switch language to ",

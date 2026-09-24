@@ -17,7 +17,10 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final pipeline = ref.watch(pipelineStateProvider);
     final languagePair = ref.watch(settingsProvider);
-    final isRunning = pipeline.stage != PipelineStage.idle;
+    final isRunning =
+        pipeline.stage == PipelineStage.listening ||
+        pipeline.stage == PipelineStage.processing ||
+        pipeline.stage == PipelineStage.speaking;
 
     return Scaffold(
       appBar: AppBar(
@@ -35,6 +38,8 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             children: [
               StatusIndicator(stage: pipeline.stage),
+              if (pipeline.message != null)
+                Text(pipeline.message!, semanticsLabel: pipeline.message),
               const SizedBox(height: 16),
               const BluetoothDevicePicker(),
               const SizedBox(height: 16),

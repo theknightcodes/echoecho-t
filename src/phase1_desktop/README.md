@@ -16,7 +16,7 @@ Mic → AudioCapture → VAD → STT → [Switch Check] → Translation → TTS 
 | STT | `ai/stt.py` | Whisper tiny transcription |
 | Translation | `ai/translate.py` | NLLB-200-distilled-600M (single model) |
 | Language Manager | `ai/language_manager.py` | Multi-language switching |
-| TTS | `ai/tts.py` | Text-to-speech (pyttsx3) |
+| TTS | `ai/tts.py` | Text-to-speech (local macOS say; optional Edge TTS) |
 | Orchestrator | `pipeline/orchestrator.py` | Threaded pipeline controller |
 | Orchestrator v2 | `pipeline/orchestrator_v2.py` | Pipeline + language switching |
 | Latency | `utils/latency.py` | Per-stage timing + CSV logging |
@@ -50,27 +50,27 @@ The system responds with a confirmation in the target language.
 
 | Code | Language | QA Status |
 |---|---|---|
-| de | German | PASS |
-| fr | French | PASS |
-| es | Spanish | PASS |
-| it | Italian | PASS |
-| pt | Portuguese | PASS |
-| nl | Dutch | PASS |
-| ru | Russian | PASS |
-| zh | Chinese | PASS |
-| ja | Japanese | PASS |
-| ko | Korean | PASS |
-| ta | Tamil | PASS |
-| hi | Hindi | PASS |
-| ar | Arabic | PASS |
-| tr | Turkish | PASS |
-| pl | Polish | PASS |
+| de | German | Not revalidated |
+| fr | French | Not revalidated |
+| es | Spanish | Not revalidated |
+| it | Italian | Not revalidated |
+| pt | Portuguese | Not revalidated |
+| nl | Dutch | Not revalidated |
+| ru | Russian | Not revalidated |
+| zh | Chinese | Not revalidated |
+| ja | Japanese | Not revalidated |
+| ko | Korean | Not revalidated |
+| ta | Tamil | Not revalidated |
+| hi | Hindi | Not revalidated |
+| ar | Arabic | Not revalidated |
+| tr | Turkish | Not revalidated |
+| pl | Polish | Not revalidated |
 
 ## Testing
 
 ```bash
 # Unit tests
-python -m pytest tests/
+../../venv/bin/python -m unittest discover -s ../../tests/unit -v
 
 # Manual test with synthetic audio
 python tests/test_pipeline.py
@@ -96,7 +96,8 @@ python -c "from utils.latency import LatencyLogger; LatencyLogger().report()"
 
 ## Notes
 
-- TTS uses pyttsx3 (system voices) in Phase 1. Piper TTS in Phase 2.
+- TTS defaults to local macOS `say`; voices must be installed. Other platforms currently print text when `say` is unavailable. `TTS(allow_network=True)` explicitly enables Edge TTS and transmits text externally.
 - Translation uses NLLB-200-distilled-600M (~2.4GB fp16) — single model for 15 languages.
 - Whisper tiny downloads on first run (~39MB).
-- All processing is local — no cloud calls.
+- Model initialization may download assets and VAD code. Fully offline installation has not been validated.
+- See [production readiness](../../docs/PRODUCTION_READINESS.md) for blockers and test scope.

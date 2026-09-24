@@ -19,28 +19,38 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _denialMessage = null;
     });
 
-    final statuses = await [
-      Permission.microphone,
-      Permission.bluetoothConnect,
-      Permission.bluetoothScan,
-    ].request();
+    try {
+      final statuses = await [
+        Permission.microphone,
+        Permission.bluetoothConnect,
+        Permission.bluetoothScan,
+      ].request();
 
-    final denied = statuses.entries
-        .where((entry) => !entry.value.isGranted)
-        .map((entry) => entry.key.toString())
-        .toList();
+      final denied = statuses.entries
+          .where((entry) => !entry.value.isGranted)
+          .map((entry) => entry.key.toString())
+          .toList();
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (denied.isEmpty) {
-      context.go('/home');
-    } else {
-      setState(() {
-        _requesting = false;
-        _denialMessage =
-            'EchoEcho-T needs microphone and Bluetooth access to translate '
-            'your conversations. Denied: ${denied.join(', ')}';
-      });
+      if (denied.isEmpty) {
+        context.go('/home');
+      } else {
+        setState(() {
+          _requesting = false;
+          _denialMessage =
+              'EchoEcho-T needs microphone and Bluetooth access to translate '
+              'your conversations. Denied: ${denied.join(', ')}';
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _requesting = false;
+          _denialMessage =
+              'Permissions could not be requested. Please try again.';
+        });
+      }
     }
   }
 
@@ -61,7 +71,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Real-time offline translation through your Bluetooth earbuds.',
+                'Translation preview. The native translation engine is not yet included.',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),

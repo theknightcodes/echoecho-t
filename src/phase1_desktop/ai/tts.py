@@ -9,10 +9,8 @@ from typing import Optional
 """
 Text-to-Speech Wrapper — Phase 1
 
-Backend priority:
-1. edge-tts (Microsoft Edge, free, 100+ languages, natural voice)
-2. macOS say (native, no install, limited languages)
-3. Print text (fallback)
+Default backend: local macOS say, with printed text fallback on other systems.
+Explicit allow_network=True enables Edge TTS before the local fallback.
 
 Phase 2+ will switch to Piper TTS for fully offline operation.
 """
@@ -61,21 +59,21 @@ _EDGE_TTS_MAX_ATTEMPTS = 3
 
 
 def _sanitize_for_tts(text: str) -> str:
-    """Strip all punctuation that TTS reads aloud as words."""
-    text = re.sub(r"^-\s+", "", text)
-    text = ''.join(ch for ch in text if not unicodedata.category(ch).startswith('P'))
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
+    """Normalize whitespace without changing decimals, signs or contractions."""
+    text = ''.join(ch for ch in text if not unicodedata.category(ch).startswith('C')
+                   or ch in "\n\t\r")
+    return re.sub(r'\s+', ' ', text).strip()
+
 
 
 class TTS:
-    def __init__(self, rate: int = 150, volume: float = 0.9):
+    def __init__(self, rate: int = 150, volume: float = 0.9, *, allow_network: bool = False):
         self.rate = rate
         self.volume = volume
         self._queue = queue.Queue(maxsize=20)
         self._thread = None
         self._running = False
-        self._edge_tts_available = self._check_edge_tts()
+        self._edge_tts_available = allow_network and self._check_edge_tts()
         self._start_worker()
 
     def _check_edge_tts(self) -> bool:
@@ -100,9 +98,15 @@ class TTS:
             except queue.Empty:
                 continue
             if item is None:
+                self._queue.task_done()
                 break
             text, lang = item
-            self._speak_sync(text, lang)
+            try:
+                self._speak_sync(text, lang)
+            except Exception as exc:
+                print(f"[TTS] Playback failed: {type(exc).__name__}")
+            finally:
+                self._queue.task_done()
 
     def _speak_sync(self, text: str, lang: str = "en"):
         clean = _sanitize_for_tts(text)
@@ -129,9 +133,9 @@ class TTS:
         say_cmd = ["say", "-r", str(self.rate)]
         if say_voice:
             say_cmd += ["-v", say_voice]
-        say_cmd.append(clean)
+
         try:
-            subprocess.run(say_cmd, check=True, timeout=30.0)
+            subprocess.run(say_cmd, input=clean, text=True, check=True, timeout=30.0)
         except FileNotFoundError:
             print(f"[TTS] {clean}")
         except subprocess.TimeoutExpired:
@@ -150,7 +154,7 @@ class TTS:
 
         try:
             communicate = edge_tts.Communicate(text, voice)
-            await communicate.save(mp3_path)
+            await asyncio.wait_for(communicate.save(mp3_path), timeout=30.0)
 
             data, samplerate = sf.read(mp3_path, dtype="float32")
             if data.ndim > 1:
@@ -166,12 +170,19 @@ class TTS:
 
     def speak(self, text: str, lang: str = "en"):
         """Queue text to be spoken (non-blocking)."""
+        if not self._running:
+            raise RuntimeError("TTS has been stopped")
         if not text.strip():
             return
         try:
             self._queue.put_nowait((text, lang))
         except queue.Full:
             print("[TTS] Queue full, dropping utterance")
+
+    @property
+    def busy(self) -> bool:
+        with self._queue.mutex:
+            return self._queue.unfinished_tasks > 0
 
     def stop(self):
         self._running = False

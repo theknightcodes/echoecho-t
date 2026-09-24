@@ -36,6 +36,8 @@ class Pipeline:
         latency_log: str = "logs/latency.csv",
         default_lang: str = "de",
     ):
+        if sample_rate != 16000:
+            raise ValueError("The desktop pipeline requires 16000 Hz audio")
         self.sample_rate = sample_rate
         self.block_size = block_size
         self.logger = LatencyLogger(latency_log)
@@ -54,6 +56,8 @@ class Pipeline:
         # Threads
         self._threads = []
         self._running = False
+        self._closed = False
+        self._reset_vad = threading.Event()
 
         # Callbacks
         self.on_transcript = None
@@ -80,7 +84,14 @@ class Pipeline:
                 continue
 
             # Skip audio during TTS cooldown to prevent feedback loop
-            if time.time() < self._tts_cooldown_until:
+            if self._reset_vad.is_set():
+                self.vad.reset()
+                self._reset_vad.clear()
+            if self.tts.busy:
+                self._tts_cooldown_until = time.monotonic() + 0.5
+                self.vad.reset()
+                continue
+            if time.monotonic() < self._tts_cooldown_until:
                 continue
 
             with Timer(self.logger, "vad", "speech detection"):
@@ -129,17 +140,6 @@ class Pipeline:
             except queue.Empty:
                 continue
 
-            # Skip very short transcripts — Whisper tiny hallucinates on 1-2 word utterances
-            stripped = text.strip()
-            if len(stripped) < 3:
-                continue
-
-            # Skip obvious TTS feedback: Tamil text getting re-transcribed as English
-            lower = stripped.lower()
-            if len(stripped) <= 4 and lower in ("bye", "hi", "dot", "don't", "yes", "no", "ok"):
-                print(f"  [SKIP] Short/hallucinated transcript: '{text}'")
-                continue
-
             # Check if this is a language switch command
             switch_lang = self.lang_manager.is_switch_command(text)
             if switch_lang:
@@ -167,8 +167,8 @@ class Pipeline:
 
     def _clear_feedback(self):
         """Reset VAD, drain all queues, and mute mic after TTS to prevent feedback loop."""
-        self._tts_cooldown_until = time.time() + 3.0
-        self.vad.reset()
+        self._tts_cooldown_until = time.monotonic() + 0.5
+        self._reset_vad.set()
         self.capture.drain()
         # Drain all queues
         self._drain_queue(self._stt_queue)
@@ -176,8 +176,17 @@ class Pipeline:
 
     def start(self):
         """Start all pipeline stages."""
+        if self._closed:
+            raise RuntimeError("Create a new Pipeline after stopping")
+        if self._running:
+            return
+        try:
+            self.capture.start()
+        except Exception:
+            self.tts.stop()
+            self._closed = True
+            raise
         self._running = True
-        self.capture.start()
 
         workers = [
             ("VAD", self._vad_worker),
@@ -200,6 +209,7 @@ class Pipeline:
     def stop(self):
         """Stop all pipeline stages."""
         self._running = False
+        self._closed = True
         self.capture.stop()
         self.tts.stop()
         for t in self._threads:

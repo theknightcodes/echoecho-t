@@ -3,6 +3,13 @@
 
 ---
 
+## Validation status
+
+This is a prototype, not a production-ready release. See the
+[production readiness review and QA instructions](docs/PRODUCTION_READINESS.md)
+for verified results, fixes, and remaining release blockers. The Android app
+currently contains a UI scaffold without a native translation engine.
+
 ## Vision
 
 Build a wearable AI communication system capable of:

@@ -1,7 +1,6 @@
 import sounddevice as sd
 import numpy as np
 import queue
-import threading
 from typing import Callable, Optional
 
 """
@@ -39,12 +38,22 @@ class AudioCapture:
         try:
             self._queue.put_nowait(audio)
         except queue.Full:
-            pass  # Drop oldest if full
+            # Keep recent audio rather than accumulating stale conversation.
+            try:
+                self._queue.get_nowait()
+            except queue.Empty:
+                pass
+            try:
+                self._queue.put_nowait(audio)
+            except queue.Full:
+                pass
         if self.on_audio:
             self.on_audio(audio)
 
     def start(self):
-        self._running = True
+        if self._stream is not None:
+            return
+        self.drain()
         self._stream = sd.RawInputStream(
             samplerate=self.sample_rate,
             blocksize=self.block_size,
@@ -52,14 +61,22 @@ class AudioCapture:
             dtype=self.dtype,
             callback=self._callback,
         )
-        self._stream.start()
+        try:
+            self._stream.start()
+            self._running = True
+        except Exception:
+            self._stream.close()
+            self._stream = None
+            raise
 
     def stop(self):
         self._running = False
         if self._stream:
-            self._stream.stop()
-            self._stream.close()
-            self._stream = None
+            stream, self._stream = self._stream, None
+            try:
+                stream.stop()
+            finally:
+                stream.close()
 
     def read(self, timeout: float = 1.0) -> Optional[np.ndarray]:
         try:

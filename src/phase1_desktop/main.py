@@ -115,11 +115,13 @@ def main():
         print(f"\n[Error] {e}")
         import traceback
         traceback.print_exc()
+        return 1
 
     print("\n" + "=" * 60)
     print("Pipeline stopped.")
     print("=" * 60)
 
+    return 0
 
 def _wrap_text(text: str, width: int) -> list:
     """Wrap text to specified width."""
@@ -138,4 +140,4 @@ def _wrap_text(text: str, width: int) -> list:
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

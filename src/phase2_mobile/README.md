@@ -1,17 +1,18 @@
-# phase2_mobile
+# EchoEcho-T Android preview
 
-A new Flutter project.
+Flutter UI scaffold with generated Pigeon interfaces. The native translation
+engine and Bluetooth routing are not implemented. Startup failure is displayed
+in the UI; a successful debug build does not imply working translation.
 
-## Getting Started
+Validated tooling: Flutter 3.44.7, Dart 3.12.2, Java 17.
 
-This project is a starting point for a Flutter application.
+```sh
+flutter pub get --enforce-lockfile
+flutter analyze
+flutter test
+flutter build apk --debug
+```
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Release builds do not use debug signing. Configure private production signing
+before distribution. See [the QA and code review report](../../docs/PRODUCTION_READINESS.md)
+for remaining implementation and device validation requirements.
