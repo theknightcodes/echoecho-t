@@ -1,6 +1,6 @@
 # Security Review Report
 
-## EchoEcho-T — AI Communication Companion
+## AetherOli — AI Communication Companion
 
 **Date:** 2026-05-13  
 **Scope:** Full project repository (documentation + planned architecture)  
@@ -58,7 +58,7 @@ No code exists yet. No user input handling.
 
 ### LLM Prompt Injection Risk (Phase 3+)
 
-This is the **highest security risk** for EchoEcho-T. Attackers could inject malicious prompts via translated speech.
+This is the **highest security risk** for AetherOli. Attackers could inject malicious prompts via translated speech.
 
 **Example attack:**
 ```
@@ -285,7 +285,7 @@ Before releasing any phase to users:
 
 ## Conclusion
 
-EchoEcho-T's **offline-first architecture is its strongest security feature**. By keeping all audio processing on-device, the attack surface is dramatically reduced compared to cloud-dependent translation apps.
+AetherOli's **offline-first architecture is its strongest security feature**. By keeping all audio processing on-device, the attack surface is dramatically reduced compared to cloud-dependent translation apps.
 
 **Current state:** No vulnerabilities. Documentation is clean.  
 **Future risk:** Prompt injection when LLM is added (Phase 3). Mitigation is already partially addressed by the approval gate design.

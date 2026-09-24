@@ -1,6 +1,6 @@
 # Cost Analysis & Budget
 
-## EchoEcho-T — AI Communication Companion
+## AetherOli — AI Communication Companion
 
 ---
 

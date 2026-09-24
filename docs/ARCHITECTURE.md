@@ -1,6 +1,6 @@
 # System Architecture
 
-## EchoEcho-T — AI Communication Operating System
+## AetherOli — AI Communication Operating System
 
 ---
 

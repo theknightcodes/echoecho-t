@@ -1,5 +1,13 @@
 # Production readiness review — 2026-09-24
 
+**Mobile implementation update:** A foreground Android speech/text translation
+flow now uses a configurable Ollama server and Android speech recognition/TTS.
+The original review below records the earlier scaffold baseline; its claims
+that mobile translation is entirely absent and onboarding requires Bluetooth
+are superseded. The older continuous Pigeon pipeline, background operation,
+Bluetooth routing, on-device LLM and physical-device acceptance remain unfinished.
+See [mobile setup and current limitations](../src/phase2_mobile/README.md).
+
 **Release decision: not ready for production.** This repository contains learning
 experiments, a desktop prototype, and an Android UI scaffold. Successful unit tests
 and APK compilation do not establish translation quality, offline operation, or

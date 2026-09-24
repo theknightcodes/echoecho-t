@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-## EchoEcho-T — Decision Log
+## AetherOli — Decision Log
 
 ---
 

@@ -8,7 +8,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: EchoEchoApp()));
     await tester.pumpAndSettle();
 
-    expect(find.text('EchoEcho-T'), findsOneWidget);
-    expect(find.text('Grant permissions & continue'), findsOneWidget);
+    expect(find.text('AetherOli'), findsOneWidget);
+    expect(find.text('Get started'), findsOneWidget);
   });
 }

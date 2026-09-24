@@ -1,6 +1,6 @@
 # Master Project Plan
 
-## Project EchoEcho-T — AI Communication Companion
+## Project AetherOli — AI Communication Companion
 
 ---
 

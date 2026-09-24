@@ -1,6 +1,6 @@
 # Phase 2 — Mobile MVP Plan
 
-## EchoEcho-T: Real-Time Translation on Android
+## AetherOli: Real-Time Translation on Android
 
 **Date:** 2026-05-23  
 **Status:** Draft  

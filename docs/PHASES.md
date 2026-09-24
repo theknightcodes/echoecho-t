@@ -1,6 +1,6 @@
 # Detailed Phase Breakdown
 
-## EchoEcho-T — Technical Specifications Per Phase
+## AetherOli — Technical Specifications Per Phase
 
 ---
 

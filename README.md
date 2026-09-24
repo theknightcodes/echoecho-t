@@ -1,4 +1,4 @@
-# Project EchoEcho-T
+# Project AetherOli
 ## AI Communication Companion / Wearable Conversational Proxy
 
 ---
@@ -7,8 +7,10 @@
 
 This is a prototype, not a production-ready release. See the
 [production readiness review and QA instructions](docs/PRODUCTION_READINESS.md)
-for verified results, fixes, and remaining release blockers. The Android app
-currently contains a UI scaffold without a native translation engine.
+for verified results, fixes, and remaining release blockers. The Android app now includes a foreground speech/text translation MVP using
+a configurable Ollama server and Android speech services. See the
+[mobile setup instructions](src/phase2_mobile/README.md). Live device and model
+quality validation remain outstanding.
 
 ## Vision
 
@@ -101,7 +103,7 @@ echoecho-t/
 |---|---|---|
 | Phase 0 — Foundation Learning | Not Started | 2026-06-03 |
 | Phase 1 — Desktop Prototype | Not Started | 2026-06-24 |
-| Phase 2 — Mobile MVP | Not Started | 2026-08-24 |
+| Phase 2 — Mobile MVP | Foreground Android MVP implemented; device validation pending | 2026-08-24 |
 | Phase 3 — AI Reply Assistant | Not Started | 2026-10-24 |
 | Phase 4 — Wearable Device | Not Started | 2027-02-24 |
 | Phase 5 — Autonomous Agent | Future | TBD |
