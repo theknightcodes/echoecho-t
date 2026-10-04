@@ -13,10 +13,19 @@ class OnboardingScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.forum_outlined, size: 80),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Image.asset(
+                  'assets/branding/aetheroli_app_icon.png',
+                  width: 112,
+                  height: 112,
+                  fit: BoxFit.cover,
+                  semanticLabel: 'EthirOli app icon',
+                ),
+              ),
               const SizedBox(height: 24),
               Text(
-                'AetherOli',
+                'EthirOli',
                 style: Theme.of(context).textTheme.headlineLarge,
               ),
               const SizedBox(height: 16),
@@ -26,12 +35,12 @@ class OnboardingScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Choose from 19 languages and translate with your own LLM. Speak or type, review the translation, and play it aloud.',
+                'Translate between 19 languages with an on-device translation model. Speak or type, review the translation, and play it aloud.',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
               const Text(
-                'Connect an Ollama server to translate. Text goes to your configured server; voice recognition may use your device’s online service. Conversation history stays in memory for this session.',
+                'The first time you use a language, its translation model downloads to your phone (about 30 MB). After that, translation runs on your device. Speech recognition may use your device’s online service.',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),

@@ -6,12 +6,19 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import com.google.mlkit.common.model.DownloadConditions
+import com.google.mlkit.nl.translate.TranslateLanguage
+import com.google.mlkit.nl.translate.Translation
+import com.google.mlkit.nl.translate.Translator
+import com.google.mlkit.nl.translate.TranslatorOptions
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.util.Locale
 
@@ -21,6 +28,10 @@ class MainActivity : FlutterActivity() {
     private var tts: TextToSpeech? = null
     private var ttsReady = false
     private var generation = 0
+    private var activeTranslator: Translator? = null
+    private var activeTranslationLanguages: Pair<String, String>? = null
+    private var pendingTranslationResult: MethodChannel.Result? = null
+    private var translationGeneration = 0
     private val handler = Handler(Looper.getMainLooper())
     private val timeout = Runnable { finishSpeech(null, "Listening timed out. Please try again.") }
 
@@ -50,6 +61,96 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "echoecho/translation")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "translate" -> translate(call, result)
+                    "cancel" -> {
+                        cancelTranslation()
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    private fun translate(call: MethodCall, result: MethodChannel.Result) {
+        val text = call.argument<String>("text")?.trim().orEmpty()
+        val sourceTag = call.argument<String>("source").orEmpty()
+        val targetTag = call.argument<String>("target").orEmpty()
+        if (text.isEmpty() || text.length > 4000) {
+            result.error("invalid_text", "Enter between 1 and 4,000 characters.", null)
+            return
+        }
+        if (sourceTag == targetTag) {
+            result.error("invalid_languages", "Choose two different languages.", null)
+            return
+        }
+        val source = TranslateLanguage.fromLanguageTag(sourceTag)
+        val target = TranslateLanguage.fromLanguageTag(targetTag)
+        if (source == null || target == null) {
+            result.error("unsupported_language", "Offline translation is not available for this language.", null)
+            return
+        }
+
+        cancelTranslation()
+        val requestGeneration = translationGeneration
+        pendingTranslationResult = result
+        val languages = source to target
+        try {
+            if (activeTranslationLanguages != languages) {
+                activeTranslator?.close()
+                activeTranslator = Translation.getClient(
+                    TranslatorOptions.Builder()
+                        .setSourceLanguage(source)
+                        .setTargetLanguage(target)
+                        .build()
+                )
+                activeTranslationLanguages = languages
+            }
+            val translator = activeTranslator ?: run {
+                completeTranslationError(requestGeneration, "translation_failed", "The offline translation model could not start.")
+                return
+            }
+            translator.downloadModelIfNeeded(DownloadConditions.Builder().build())
+                .addOnSuccessListener download@{
+                    if (requestGeneration != translationGeneration) return@download
+                    translator.translate(text)
+                        .addOnSuccessListener translationComplete@{ translated ->
+                            if (requestGeneration != translationGeneration) return@translationComplete
+                            val pending = pendingTranslationResult
+                            pendingTranslationResult = null
+                            pending?.success(translated)
+                        }
+                        .addOnFailureListener {
+                            completeTranslationError(requestGeneration, "translation_failed", "On-device translation failed. Please try again.")
+                        }
+                }
+                .addOnFailureListener {
+                    completeTranslationError(requestGeneration, "model_download", "Couldn't download the offline language model. Connect to the internet and try again.")
+                }
+        } catch (error: Exception) {
+            Log.e("EthirOliTranslate", "Could not start translation for $sourceTag -> $targetTag", error)
+            completeTranslationError(
+                requestGeneration,
+                "translation_start_failed",
+                "Translation could not start. Update Google Play services, connect to the internet for the first model download, and check available storage."
+            )
+        }
+    }
+
+    private fun completeTranslationError(generation: Int, code: String, message: String) {
+        if (generation != translationGeneration) return
+        val pending = pendingTranslationResult
+        pendingTranslationResult = null
+        pending?.error(code, message, null)
+    }
+
+    private fun cancelTranslation() {
+        translationGeneration++
+        val pending = pendingTranslationResult
+        pendingTranslationResult = null
+        pending?.error("cancelled", "Translation cancelled.", null)
     }
 
     private fun locale(code: String): Locale = Locale.forLanguageTag(when (code) {
@@ -143,6 +244,10 @@ class MainActivity : FlutterActivity() {
 
     override fun onDestroy() {
         finishSpeech(null)
+        cancelTranslation()
+        activeTranslator?.close()
+        activeTranslator = null
+        activeTranslationLanguages = null
         tts?.shutdown()
         tts = null
         super.onDestroy()

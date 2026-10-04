@@ -35,7 +35,7 @@ class EchoEchoApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'AetherOli',
+      title: 'EthirOli',
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       routerConfig: _router,

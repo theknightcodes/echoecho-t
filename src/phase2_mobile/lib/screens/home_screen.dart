@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../models/language_config.dart';
+import '../services/on_device_translation_service.dart';
 import '../services/speech_service.dart';
 import '../services/translation_service.dart';
 
@@ -27,14 +28,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final _text = TextEditingController();
-  final _endpoint = TextEditingController(
-    text: const String.fromEnvironment('OLLAMA_URL'),
-  );
-  final _model = TextEditingController(
-    text: const String.fromEnvironment('OLLAMA_MODEL'),
-  );
   final _history = <ConversationTurn>[];
-  late final _translator = widget.translationService ?? TranslationService();
+  late final _deviceTranslator = OnDeviceTranslationService();
   late final _speech = widget.speechService ?? SpeechService();
   var _languages = const LanguagePairConfig();
   bool _translating = false;
@@ -52,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
       _generation++;
-      _translator.cancel();
+      _cancelTranslation();
       unawaited(_speech.stop().catchError((Object _) {}));
       setState(() {
         _listening = false;
@@ -65,12 +60,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _generation++;
-    _translator.cancel();
+    _cancelTranslation();
     unawaited(_speech.stop().catchError((Object _) {}));
     _text.dispose();
-    _endpoint.dispose();
-    _model.dispose();
     super.dispose();
+  }
+
+  void _cancelTranslation() {
+    widget.translationService?.cancel();
+    _deviceTranslator.cancel();
   }
 
   String _label(String code) =>
@@ -86,12 +84,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _error = null;
     });
     try {
-      final translated = await _translator.translate(
-        endpoint: _endpoint.text,
-        model: _model.text,
-        text: original,
-        languages: pair,
-      );
+      final translated = widget.translationService == null
+          ? await _deviceTranslator.translate(text: original, languages: pair)
+          : await widget.translationService!.translate(
+              endpoint: '',
+              model: '',
+              text: original,
+              languages: pair,
+            );
       if (!mounted || generation != _generation) return;
       setState(() {
         _history.insert(0, ConversationTurn(original, translated, pair));
@@ -104,11 +104,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           () => _error = switch (e) {
             FormatException() => e.message,
             TimeoutException() =>
-              'Translation timed out. Try again or use a smaller model.',
+              'On-device translation took too long. Try a shorter phrase.',
             SocketException() =>
-              'Cannot reach your LLM server. Check its address and your connection.',
+              'Cannot prepare the offline translation model. Check your internet connection and try again.',
             HttpException() => e.message,
-            _ => 'Translation failed. Check your server and try again.',
+            PlatformException() =>
+              e.message ?? 'On-device translation failed. Please try again.',
+            _ => 'On-device translation failed. Please try again.',
           },
         );
       }
@@ -156,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _stop() async {
     _generation++;
-    _translator.cancel();
+    _cancelTranslation();
     setState(() {
       _listening = false;
       _translating = false;
@@ -180,54 +182,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         );
       }
     }
-  }
-
-  Future<void> _configure() async {
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Connect your LLM'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Enter your Ollama server and an installed model. Submitted text is sent to this server. Settings and history last for this app session.',
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _endpoint,
-                decoration: const InputDecoration(
-                  labelText: 'Server URL',
-                  hintText: 'http://10.0.2.2:11434',
-                ),
-                keyboardType: TextInputType.url,
-                autocorrect: false,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _model,
-                decoration: const InputDecoration(
-                  labelText: 'Installed model name',
-                ),
-                autocorrect: false,
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Use a trusted server. HTTP is for local debug builds; release builds require HTTPS.',
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Done'),
-          ),
-        ],
-      ),
-    );
-    if (mounted) setState(() {});
   }
 
   Widget _language(String code, bool source) => Expanded(
@@ -273,16 +227,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final busy = _translating || _listening;
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('AetherOli'),
-        actions: [
-          IconButton(
-            tooltip: 'LLM connection',
-            onPressed: busy ? null : _configure,
-            icon: const Icon(Icons.tune),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('EthirOli')),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(20),
@@ -315,17 +260,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ],
             ),
             const SizedBox(height: 20),
-            if (_endpoint.text.trim().isEmpty || _model.text.trim().isEmpty)
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.link),
-                  title: const Text('Connect an LLM to get started'),
-                  subtitle: const Text(
-                    'Translation runs on your Ollama server.',
-                  ),
-                  onTap: busy ? null : _configure,
-                ),
-              ),
             TextField(
               controller: _text,
               enabled: !busy,
@@ -362,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               Text(
                 _listening
                     ? 'Listening… Your transcript will appear above.'
-                    : 'Your LLM is translating…',
+                    : 'Preparing on-device translation…',
               ),
               if (_translating)
                 TextButton(onPressed: _stop, child: const Text('Cancel')),

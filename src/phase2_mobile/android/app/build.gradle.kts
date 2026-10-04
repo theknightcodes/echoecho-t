@@ -1,7 +1,37 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+dependencies {
+    implementation("com.google.mlkit:translate:17.0.3")
+}
+
+val uploadPropertiesFile = rootProject.file("key.properties")
+val uploadProperties = Properties().apply {
+    if (uploadPropertiesFile.isFile) {
+        uploadPropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+val validateUploadSigning = tasks.register("validateUploadSigning") {
+    doLast {
+        for (property in listOf("storeFile", "storePassword", "keyAlias", "keyPassword")) {
+            check(!uploadProperties.getProperty(property).isNullOrBlank()) {
+                "Release signing requires $property in android/key.properties. See android/key.properties.example."
+            }
+        }
+        check(rootProject.file(uploadProperties.getProperty("storeFile")).isFile) {
+            "Release upload keystore is missing. Check storeFile in android/key.properties."
+        }
+    }
+}
+
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(validateUploadSigning)
 }
 
 android {
@@ -23,10 +53,22 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("upload") {
+            storeFile = uploadProperties.getProperty("storeFile")?.let { rootProject.file(it) }
+            storePassword = uploadProperties.getProperty("storePassword")
+            keyAlias = uploadProperties.getProperty("keyAlias")
+            keyPassword = uploadProperties.getProperty("keyPassword")
+        }
+    }
+
     buildTypes {
         release {
-            // Release artifacts remain unsigned until a production signing
-            // configuration is supplied. Never distribute with debug keys.
+            signingConfig = signingConfigs.getByName("upload")
+            // ML Kit Translation currently throws from its obfuscated factory in optimized
+            // release builds. Keep its runtime classes intact until that library fix lands.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
